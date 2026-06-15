@@ -1291,38 +1291,60 @@ document.querySelectorAll('.round-scores-val')[0]?.focus();
     }
 
 function saveCourse() {
-    // 1. Get the data from the boxes
-    const id = document.getElementById('editCourseId').value;
-    const cNameInput = document.getElementById('cName');
+    const id = document.getElementById('editCourseId').value || Date.now().toString();
+    const name = document.getElementById('cName').value;
 
-    const c = {
-        id: id || 'c' + Date.now(),
-        name: cNameInput.value,
-        pars: Array.from(document.querySelectorAll('.setup-pars-val')).map(i => i.value),
-        si: Array.from(document.querySelectorAll('.setup-si-val')).map(i => i.value),
-        yards: window.tempYards || []
-    };
-
-    // 2. Save it to the list
-    if (id) {
-        courses = courses.map(x => String(x.id) === String(id) ? c : x);
-    } else {
-        courses.push(c);
+    if (!name) {
+        alert('Please enter or load a course name first.');
+        return;
     }
 
-    // 3. THE FIX: Empty the boxes so they are blank for next time
-    document.getElementById('editCourseId').value = ''; // Clears the hidden ID
-    cNameInput.value = ''; // Clears the Course Name box
-    
-    // Clear all the Par and SI boxes
-    document.querySelectorAll('.setup-pars-val').forEach(i => i.value = '');
-    document.querySelectorAll('.setup-si-val').forEach(i => i.value = '');
+    const pars = [];
+    const si = [];
 
-    // 4. Update the memory and the screen
+    // Collect all input values directly from your 18-hole grid containers
+    document.querySelectorAll('#setup-pars input').forEach(input => pars.push(input.value || '4'));
+    document.querySelectorAll('#setup-si input').forEach(input => si.push(input.value || '18'));
+
+    // Force values to strings for clear local data matching
+    const courseData = { 
+        id: id.toString(), 
+        name: name, 
+        pars: pars, 
+        si: si 
+    };
+
+    // Update the course if it already exists in the registry, otherwise add a new one
+    const existingIndex = courses.findIndex(c => c.id.toString() === id.toString());
+    if (existingIndex > -1) {
+        courses[existingIndex] = courseData;
+    } else {
+        courses.push(courseData);
+    }
+
+    // Save to memory
     saveData();
-    renderAdmin();
-
-    alert('Course saved and form cleared!');
+    alert('Course saved to your registry successfully!');
+    
+    // Clear out the form fields so it's clean for your next use
+    document.getElementById('editCourseId').value = '';
+    document.getElementById('cName').value = '';
+    document.getElementById('courseSearch').value = '';
+    document.getElementById('courseResults').innerHTML = '';
+    
+    // Clear out the input grids themselves so old data doesn't linger visually
+    document.querySelectorAll('#setup-pars input').forEach(input => input.value = '');
+    document.querySelectorAll('#setup-si input').forEach(input => input.value = '');
+    
+    document.getElementById('teeSelector').style.display = 'none';
+    document.getElementById('loadTeeBtn').style.display = 'none';
+    
+    // Instantly update your course selection lists and UI dropdown boxes across the app
+    if (typeof renderCourses === "function") renderCourses();
+    if (typeof renderAdminCourses === "function") renderAdminCourses();
+    if (typeof updateCourseDropdowns === "function") updateCourseDropdowns();
+    if (typeof updateCourseSelects === "function") updateCourseSelects();
+    if (typeof init === "function") init(); 
 }
 
     function renderAdmin() {
@@ -1347,19 +1369,40 @@ function saveCourse() {
         document.querySelectorAll('.setup-si-val').forEach((inp, i) => inp.value = c.si[i]);
     }
 
-    function deleteCourse(id) { if(confirm("Delete?")) { courses = courses.filter(x => String(x.id) !== String(id)); saveData(); renderAdmin(); } }
+function deleteCourse(id) {
+    if (confirm("Are you sure you want to permanently delete this course?")) {
+        // Keeps everything EXCEPT the course we want to delete
+        courses = courses.filter(x => String(x.id) !== String(id));
+        saveData();
+        
+        // Refreshes the display and dropdown lists instantly
+        if (typeof renderAdminCourses === "function") renderAdminCourses();
+        if (typeof updateCourseDropdowns === "function") updateCourseDropdowns();
+        if (typeof init === "function") init();
+        
+        alert("Course deleted.");
+    }
+}
 
-    function factoryReset() { if(confirm("DANGER: This wipes EVERYTHING. Continue?")) { localStorage.clear(); location.reload(); } }
+function factoryReset() { 
+    if (confirm("DANGER: This wipes EVERYTHING. Continue?")) { 
+        localStorage.clear();
+        location.reload(); 
+    } 
+}
+
 let competitionTeams = [];
 
 function renderTeamSelector() {
-    const now = new Date();
-    document.getElementById('tmDate').value = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`;
-    document.getElementById('team-selector').innerHTML = players.map(p => `
-        <div class="selector-item">
-            <label>${p.name}</label>
-            <input type="checkbox" class="tm-ck" value="${p.id}">
-        </div>`).join('');
+   const now = new Date();
+   document.getElementById('tmDate').value = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`;
+   
+   document.getElementById('team-selector').innerHTML = players.map(p => `
+       <div class="selector-item">
+           <label>${p.name}</label>
+           <input type="checkbox" class="tm-ck" value="${p.id}">
+       </div>
+   `).join('');
 }
 
 function addTeam() {
