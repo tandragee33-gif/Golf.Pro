@@ -1301,6 +1301,50 @@ function saveCourse() {
 
     const pars = [];
     const si = [];
+    const yards = window.tempYards || []; // Grab the yardages gathered during the API tee load
+
+    // Safely collect all values using your exact grid input classes
+    document.querySelectorAll('.setup-pars-val').forEach(input => pars.push(input.value || '4'));
+    document.querySelectorAll('.setup-si-val').forEach(input => si.push(input.value || '18'));
+
+    const courseData = { 
+        id: id.toString(), 
+        name: name, 
+        pars: pars, 
+        si: si,
+        yards: yards
+    };
+
+    // Update existing course or create a brand new registry record
+    const existingIndex = courses.findIndex(c => c.id.toString() === id.toString());
+    if (existingIndex > -1) {
+        courses[existingIndex] = courseData;
+    } else {
+        courses.push(courseData);
+    }
+
+    saveData();
+    alert('Course saved to your registry successfully!');
+    
+    // Clear out the course input fields completely
+    document.getElementById('editCourseId').value = '';
+    document.getElementById('cName').value = '';
+    document.getElementById('courseSearch').value = '';
+    document.getElementById('courseResults').innerHTML = '';
+    
+    document.querySelectorAll('.setup-pars-val').forEach(input => input.value = '');
+    document.querySelectorAll('.setup-si-val').forEach(input => input.value = '');
+    
+    document.getElementById('teeSelector').style.display = 'none';
+    document.getElementById('loadTeeBtn').style.display = 'none';
+    window.tempYards = []; // Clear temporary yardage memory
+    
+    // Refresh your lists using your exact view-updater
+    if (typeof renderAdmin === "function") renderAdmin();
+}
+
+    const pars = [];
+    const si = [];
 
     // Collect all input values directly from your 18-hole grid containers
     document.querySelectorAll('#setup-pars input').forEach(input => pars.push(input.value || '4'));
@@ -1371,14 +1415,12 @@ function saveCourse() {
 
 function deleteCourse(id) {
     if (confirm("Are you sure you want to permanently delete this course?")) {
-        // Keeps everything EXCEPT the course we want to delete
+        // Filter out the selected course from your list
         courses = courses.filter(x => String(x.id) !== String(id));
         saveData();
         
-        // Refreshes the display and dropdown lists instantly
-        if (typeof renderAdminCourses === "function") renderAdminCourses();
-        if (typeof updateCourseDropdowns === "function") updateCourseDropdowns();
-        if (typeof init === "function") init();
+        // Instantly redraw the course list registry on your setup screen
+        if (typeof renderAdmin === "function") renderAdmin();
         
         alert("Course deleted.");
     }
