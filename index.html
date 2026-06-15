@@ -86,11 +86,10 @@
     <!-- DASHBOARD (HISTORY) -->
     <div id="tab-dash" class="tab-content">
         <div id="dash-main-view">
-<div class="card" id="past-tourney-list-card">
-    <h3>Tournament Titles</h3>
-    <select id="tourneySeason" onchange="renderPastComps()"></select>
-    <div id="past-tourney-list"></div>
-</div>
+            <div class="card" id="past-tourney-list-card">
+                <h3>Tournament Titles</h3>
+                <div id="past-tourney-list"></div>
+            </div>
             <div class="card" id="recent-rounds-card">
                 <h3>Recent Rounds</h3>
                 <select id="dashSeason" onchange="renderDashboard()"></select>
@@ -494,117 +493,255 @@ function loadData() {
 // All the stray duplicate text that was here has been DELETED.
 
 function saveGolfApiKey() {
-   const key = document.getElementById('golfApiKey').value;
-   localStorage.setItem('golf_api_key', key);
-   alert('Golf Course API Key Saved!');
+    const key = document.getElementById('golfApiKey').value;
+    localStorage.setItem('golf_api_key', key);
+    alert('API Key Saved!');
 }
-
 async function searchCourse() {
-   const apiKey = localStorage.getItem('golf_api_key');
-   const search = document.getElementById('courseSearch').value;
-   if (!search) {
-       alert('Enter a course name');
-       return;
-   }
-   try {
-       const response = await fetch(
-           `https://api.golfcourseapi.com/v1/search?search_query=${encodeURIComponent(search)}&limit=10`, 
-           { headers: { "Authorization": `Key ${apiKey}` } }
-       );
-       const data = await response.json();
-       console.log(data);
-       
-       let html = '';
-       if (!data.courses || data.courses.length === 0) {
-           html = 'No courses found';
-       } else {
-           data.courses.forEach(course => {
-               html += `
-               <button class="btn-outline" style="width:100%; margin:5px 0;" onclick="selectCourse(${course.id})">
-                   ${course.club_name} (${course.location?.country || 'UK'})
-               </button>
-               `;
-           });
-       }
-       document.getElementById('courseResults').innerHTML = html;
-   } catch (err) {
-       console.error(err);
-       alert('Search failed');
-   }
+
+    const apiKey =
+        localStorage.getItem(
+            'golf_api_key'
+        );
+
+    const search =
+        document.getElementById(
+            'courseSearch'
+        ).value;
+
+    if (!search) {
+        alert('Enter a course name');
+        return;
+    }
+
+    try {
+
+     const response =
+    await fetch(
+        `https://api.golfcourseapi.com/v1/search?search_query=${encodeURIComponent(search)}&limit=10`,
+                {
+                    headers: {
+                        "Authorization":
+                            `Key ${apiKey}`
+                    }
+                }
+            );
+
+        const data =
+            await response.json();
+
+console.log(data);
+alert(JSON.stringify(data));
+
+let html = '';
+
+if (data.courses.length === 0) {
+
+    html = 'No courses found';
+
+} else {
+
+    data.courses.forEach(course => {
+
+html += `
+    <button class="btn-outline"
+    style="width:100%; margin:5px 0;"
+    onclick="selectCourse(${course.id})">
+
+        ${course.club_name}
+        (${course.location.country})
+
+    </button>
+`;
+    });
 }
 
+document.getElementById(
+    'courseResults'
+).innerHTML = html;
+
+    } catch (err) {
+
+        console.error(err);
+
+        alert(
+            'Search failed'
+        );
+    }
+}
 async function selectCourse(courseId) {
-   const apiKey = localStorage.getItem('golf_api_key');
-   try {
-       const response = await fetch(
-           `https://api.golfcourseapi.com/v1/courses/${courseId}`, 
-           { headers: { "Authorization": `Key ${apiKey}` } }
-       );
-       const data = await response.json();
-       selectedCourseData = data.course;
-       
-       const teeSelector = document.getElementById('teeSelector');
-       teeSelector.innerHTML = '<option value="">Select Tee Box</option>';
-       
-       let tees = [];
-       if (data.course.tees && data.course.tees.male) {
-           tees = tees.concat(data.course.tees.male);
-       }
-       if (data.course.tees && data.course.tees.female) {
-           tees = tees.concat(data.course.tees.female);
-       }
-       
-       tees.forEach((tee, index) => {
-           const option = document.createElement('option');
-           option.value = index;
-           option.textContent = `${tee.tee_name} - ${tee.total_yards || 0} yds (Slope ${tee.slope_rating || 'N/A'})`;
-           teeSelector.appendChild(option);
-       });
-       
-       teeSelector.style.display = 'block';
-       document.getElementById('loadTeeBtn').style.display = 'block';
-   } catch (err) {
-       console.error(err);
-       alert('Failed to load tee boxes');
-   }
+
+    const apiKey =
+        localStorage.getItem(
+            'golf_api_key'
+        );
+
+    try {
+
+        const response =
+            await fetch(
+                `https://api.golfcourseapi.com/v1/courses/${courseId}`,
+                {
+                    headers: {
+                        "Authorization":
+                            `Key ${apiKey}`
+                    }
+                }
+            );
+
+        const data =
+            await response.json();
+
+        selectedCourseData = data.course;
+
+        const teeSelector =
+            document.getElementById(
+                'teeSelector'
+            );
+
+        teeSelector.innerHTML =
+            '<option value="">Select Tee Box</option>';
+
+        let tees = [];
+
+        if (
+            data.course.tees &&
+            data.course.tees.male
+        ) {
+            tees =
+                tees.concat(
+                    data.course.tees.male
+                );
+        }
+
+        if (
+            data.course.tees &&
+            data.course.tees.female
+        ) {
+            tees =
+                tees.concat(
+                    data.course.tees.female
+                );
+        }
+
+        tees.forEach((tee, index) => {
+
+            const option =
+                document.createElement(
+                    'option'
+                );
+
+            option.value = index;
+
+option.textContent =
+    `${tee.tee_name}
+    - ${tee.total_yards || 0} yds
+    (Slope ${tee.slope_rating || 'N/A'})`;
+
+            teeSelector.appendChild(
+                option
+            );
+        });
+
+        teeSelector.style.display =
+            'block';
+
+        document.getElementById(
+            'loadTeeBtn'
+        ).style.display =
+            'block';
+
+    } catch (err) {
+
+        console.error(err);
+
+        alert(
+            'Failed to load tee boxes'
+        );
+    }
+}
+function loadSelectedTee() {
+
+    const teeIndex =
+        document.getElementById(
+            'teeSelector'
+        ).value;
+
+    if (teeIndex === '') {
+        alert('Please select a tee box');
+        return;
+    }
+
+    let tees = [];
+
+    if (
+        selectedCourseData.tees &&
+        selectedCourseData.tees.male
+    ) {
+        tees = tees.concat(
+            selectedCourseData.tees.male
+        );
+    }
+
+    if (
+        selectedCourseData.tees &&
+        selectedCourseData.tees.female
+    ) {
+        tees = tees.concat(
+            selectedCourseData.tees.female
+        );
+    }
+
+    const selectedTee =
+        tees[teeIndex];
+
+    // COURSE NAME
+    document.getElementById(
+        'cName'
+    ).value =
+        selectedCourseData.club_name +
+        ' - ' +
+        selectedTee.tee_name;
+
+    // LOAD PARS
+    document.querySelectorAll(
+        '.setup-pars-val'
+    ).forEach((input, i) => {
+
+        input.value =
+            selectedTee.holes?.[i]?.par || '';
+    });
+
+    // LOAD STROKE INDEX
+    document.querySelectorAll(
+        '.setup-si-val'
+    ).forEach((input, i) => {
+
+        input.value =
+            selectedTee.holes?.[i]?.hcp || '';
+    });
+
+// SAVE YARDAGES
+window.tempYards =
+    selectedTee.holes?.map(
+        h => h.yardage || 0
+    ) || [];
+
+    console.log(selectedTee);
+alert(JSON.stringify(selectedTee.holes[0]));
 }
 
-function loadSelectedTee() {
-   const teeIndex = document.getElementById('teeSelector').value;
-   if (teeIndex === '') {
-       alert('Please select a tee box');
-       return;
-   }
-   
-   let tees = [];
-   if (selectedCourseData.tees && selectedCourseData.tees.male) {
-       tees = tees.concat(selectedCourseData.tees.male);
-   }
-   if (selectedCourseData.tees && selectedCourseData.tees.female) {
-       tees = tees.concat(selectedCourseData.tees.female);
-   }
-   
-   const selectedTee = tees[teeIndex];
-   
-   // Load Name
-   document.getElementById('cName').value = selectedCourseData.club_name + ' - ' + selectedTee.tee_name;
-   
-   // Load Pars into grid
-   const parInputs = document.querySelectorAll('.setup-pars-val, #setup-pars input');
-   parInputs.forEach((input, i) => {
-       input.value = selectedTee.holes?.[i]?.par || '';
-   });
-   
-   // Load Handicap Stroke Index (.hcp format matched perfectly)
-   const siInputs = document.querySelectorAll('.setup-si-val, #setup-si input');
-   siInputs.forEach((input, i) => {
-       input.value = selectedTee.holes?.[i]?.hcp || '';
-   });
-   
-   // Cache Yardages
-   window.tempYards = selectedTee.holes?.map(h => h.yardage || 0) || [];
-   alert("Course details imported from Golf Course API successfully!");
-}
+    function saveData() {
+        localStorage.setItem('g_players', JSON.stringify(players));
+        localStorage.setItem('g_courses', JSON.stringify(courses));
+        localStorage.setItem('g_rounds', JSON.stringify(rounds));
+        localStorage.setItem('g_pairsT', JSON.stringify(pairsT));
+        localStorage.setItem('g_singlesT', JSON.stringify(singlesT));
+        localStorage.setItem('g_pastComps', JSON.stringify(pastComps));
+        localStorage.setItem('g_club', JSON.stringify(club));
+localStorage.setItem('g_compTeams', JSON.stringify(competitionTeams));
+    }
+
     // BACKUP FUNCTION
     function backupData() {
         const data = {
@@ -874,22 +1011,12 @@ const yards =
         if(club.logo) { logo.src = club.logo; logo.style.display = 'block'; }
     }
 
- function updateSeasonDropdown() {
-    // Collects all unique years found in your rounds data
-    const seasons = [...new Set(rounds.map(r => r.season))].sort().reverse();
-    if(seasons.length === 0) seasons.push(new Date().getFullYear().toString());
-    
-    // Create the options HTML string
-    const optionsHtml = seasons.map(s => `<option value="${s}">${s} Season</option>`).join('');
-    
-    // Update both dropdown menus at the same time safely
-    if (document.getElementById('dashSeason')) {
-        document.getElementById('dashSeason').innerHTML = optionsHtml;
+    function updateSeasonDropdown() {
+        const seasons = [...new Set(rounds.map(r => r.season))].sort().reverse();
+        const sel = document.getElementById('dashSeason');
+        if(seasons.length === 0) seasons.push(new Date().getFullYear().toString());
+        sel.innerHTML = seasons.map(s => `<option value="${s}">${s} Season</option>`).join('');
     }
-    if (document.getElementById('tourneySeason')) {
-        document.getElementById('tourneySeason').innerHTML = optionsHtml;
-    }
-}
 
     function renderDashboard() {
         const s = document.getElementById('dashSeason').value;
@@ -1095,40 +1222,11 @@ function resetDoublesSelection() {
     showDbStep1(); 
 }
 
-function renderPastComps() {
-    const list = document.getElementById('past-tourney-list');
-    
-    // 1. If there are no tournament records anywhere, stop and display basic message
-    if(pastComps.length === 0) { 
-        list.innerHTML = "<p style='font-size:12px; color:#999;'>No tournament records.</p>";
-        return; 
+    function renderPastComps() {
+        const list = document.getElementById('past-tourney-list');
+        if(pastComps.length === 0) { list.innerHTML = "<p style='font-size:12px; color:#999;'>No tournament records.</p>"; return; }
+        list.innerHTML = pastComps.sort((a,b)=>b.id - a.id).map(c => `<div class="item-row"><span><b>${c.winner}</b><br><small>${c.type} - ${c.date} ${c.detail ? '('+c.detail+')' : ''}</small></span><button class="btn-del" onclick="deletePastComp(${c.id})">X</button></div>`).join('');
     }
-    
-    // 2. Read the year selected inside your new dropdown menu
-    const selectedSeason = document.getElementById('tourneySeason') ? document.getElementById('tourneySeason').value : '';
-    
-    // 3. Filter the tournaments list dynamically
-    const filteredTourneys = pastComps.filter(c => {
-        if (!selectedSeason) return true;
-        // Checks if the date string contains or matches the selected 4-digit year string
-        return c.date && c.date.includes(selectedSeason);
-    });
-
-    // 4. If no tournaments match that specific year dropdown selection
-    if(filteredTourneys.length === 0) { 
-        list.innerHTML = "<p style='font-size:12px; color:#999; padding: 4px;'>No tournament records for this season.</p>";
-        return; 
-    }
-    
-    // 5. Render your rows exactly like your original structure, but using the filtered rows
-    list.innerHTML = filteredTourneys.sort((a,b)=>b.id - a.id).map(c =>
-        `<div class="item-row">
-            <span><b>${c.winner}</b><br>
-            <small>${c.type} - ${c.date} ${c.detail ? '('+c.detail+')' : ''}</small></span>
-            <button class="btn-del" onclick="deletePastComp(${c.id})">X</button>
-        </div>`
-    ).join('');
-}
 
     function deletePastComp(id) { if(confirm("Delete?")) { pastComps = pastComps.filter(c => c.id !== id); saveData(); renderPastComps(); } }
 
@@ -1291,104 +1389,38 @@ document.querySelectorAll('.round-scores-val')[0]?.focus();
     }
 
 function saveCourse() {
-    const id = document.getElementById('editCourseId').value || Date.now().toString();
-    const name = document.getElementById('cName').value;
+    // 1. Get the data from the boxes
+    const id = document.getElementById('editCourseId').value;
+    const cNameInput = document.getElementById('cName');
 
-    if (!name) {
-        alert('Please enter or load a course name first.');
-        return;
-    }
-
-    const pars = [];
-    const si = [];
-    const yards = window.tempYards || []; // Grab the yardages gathered during the API tee load
-
-    // Safely collect all values using your exact grid input classes
-    document.querySelectorAll('.setup-pars-val').forEach(input => pars.push(input.value || '4'));
-    document.querySelectorAll('.setup-si-val').forEach(input => si.push(input.value || '18'));
-
-    const courseData = { 
-        id: id.toString(), 
-        name: name, 
-        pars: pars, 
-        si: si,
-        yards: yards
+    const c = {
+        id: id || 'c' + Date.now(),
+        name: cNameInput.value,
+        pars: Array.from(document.querySelectorAll('.setup-pars-val')).map(i => i.value),
+        si: Array.from(document.querySelectorAll('.setup-si-val')).map(i => i.value),
+        yards: window.tempYards || []
     };
 
-    // Update existing course or create a brand new registry record
-    const existingIndex = courses.findIndex(c => c.id.toString() === id.toString());
-    if (existingIndex > -1) {
-        courses[existingIndex] = courseData;
+    // 2. Save it to the list
+    if (id) {
+        courses = courses.map(x => String(x.id) === String(id) ? c : x);
     } else {
-        courses.push(courseData);
+        courses.push(c);
     }
 
+    // 3. THE FIX: Empty the boxes so they are blank for next time
+    document.getElementById('editCourseId').value = ''; // Clears the hidden ID
+    cNameInput.value = ''; // Clears the Course Name box
+    
+    // Clear all the Par and SI boxes
+    document.querySelectorAll('.setup-pars-val').forEach(i => i.value = '');
+    document.querySelectorAll('.setup-si-val').forEach(i => i.value = '');
+
+    // 4. Update the memory and the screen
     saveData();
-    alert('Course saved to your registry successfully!');
-    
-    // Clear out the course input fields completely
-    document.getElementById('editCourseId').value = '';
-    document.getElementById('cName').value = '';
-    document.getElementById('courseSearch').value = '';
-    document.getElementById('courseResults').innerHTML = '';
-    
-    document.querySelectorAll('.setup-pars-val').forEach(input => input.value = '');
-    document.querySelectorAll('.setup-si-val').forEach(input => input.value = '');
-    
-    document.getElementById('teeSelector').style.display = 'none';
-    document.getElementById('loadTeeBtn').style.display = 'none';
-    window.tempYards = []; // Clear temporary yardage memory
-    
-    // Refresh your lists using your exact view-updater
-    if (typeof renderAdmin === "function") renderAdmin();
-}
+    renderAdmin();
 
-    const pars = [];
-    const si = [];
-
-    // Collect all input values directly from your 18-hole grid containers
-    document.querySelectorAll('#setup-pars input').forEach(input => pars.push(input.value || '4'));
-    document.querySelectorAll('#setup-si input').forEach(input => si.push(input.value || '18'));
-
-    // Force values to strings for clear local data matching
-    const courseData = { 
-        id: id.toString(), 
-        name: name, 
-        pars: pars, 
-        si: si 
-    };
-
-    // Update the course if it already exists in the registry, otherwise add a new one
-    const existingIndex = courses.findIndex(c => c.id.toString() === id.toString());
-    if (existingIndex > -1) {
-        courses[existingIndex] = courseData;
-    } else {
-        courses.push(courseData);
-    }
-
-    // Save to memory
-    saveData();
-    alert('Course saved to your registry successfully!');
-    
-    // Clear out the form fields so it's clean for your next use
-    document.getElementById('editCourseId').value = '';
-    document.getElementById('cName').value = '';
-    document.getElementById('courseSearch').value = '';
-    document.getElementById('courseResults').innerHTML = '';
-    
-    // Clear out the input grids themselves so old data doesn't linger visually
-    document.querySelectorAll('#setup-pars input').forEach(input => input.value = '');
-    document.querySelectorAll('#setup-si input').forEach(input => input.value = '');
-    
-    document.getElementById('teeSelector').style.display = 'none';
-    document.getElementById('loadTeeBtn').style.display = 'none';
-    
-    // Instantly update your course selection lists and UI dropdown boxes across the app
-    if (typeof renderCourses === "function") renderCourses();
-    if (typeof renderAdminCourses === "function") renderAdminCourses();
-    if (typeof updateCourseDropdowns === "function") updateCourseDropdowns();
-    if (typeof updateCourseSelects === "function") updateCourseSelects();
-    if (typeof init === "function") init(); 
+    alert('Course saved and form cleared!');
 }
 
     function renderAdmin() {
@@ -1413,38 +1445,19 @@ function saveCourse() {
         document.querySelectorAll('.setup-si-val').forEach((inp, i) => inp.value = c.si[i]);
     }
 
-function deleteCourse(id) {
-    if (confirm("Are you sure you want to permanently delete this course?")) {
-        // Filter out the selected course from your list
-        courses = courses.filter(x => String(x.id) !== String(id));
-        saveData();
-        
-        // Instantly redraw the course list registry on your setup screen
-        if (typeof renderAdmin === "function") renderAdmin();
-        
-        alert("Course deleted.");
-    }
-}
+    function deleteCourse(id) { if(confirm("Delete?")) { courses = courses.filter(x => String(x.id) !== String(id)); saveData(); renderAdmin(); } }
 
-function factoryReset() { 
-    if (confirm("DANGER: This wipes EVERYTHING. Continue?")) { 
-        localStorage.clear();
-        location.reload(); 
-    } 
-}
-
+    function factoryReset() { if(confirm("DANGER: This wipes EVERYTHING. Continue?")) { localStorage.clear(); location.reload(); } }
 let competitionTeams = [];
 
 function renderTeamSelector() {
-   const now = new Date();
-   document.getElementById('tmDate').value = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`;
-   
-   document.getElementById('team-selector').innerHTML = players.map(p => `
-       <div class="selector-item">
-           <label>${p.name}</label>
-           <input type="checkbox" class="tm-ck" value="${p.id}">
-       </div>
-   `).join('');
+    const now = new Date();
+    document.getElementById('tmDate').value = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`;
+    document.getElementById('team-selector').innerHTML = players.map(p => `
+        <div class="selector-item">
+            <label>${p.name}</label>
+            <input type="checkbox" class="tm-ck" value="${p.id}">
+        </div>`).join('');
 }
 
 function addTeam() {
@@ -1576,13 +1589,13 @@ function exportMasterReport() {
 
     const searchDateStr = parseDateInput(dateInput); 
     const dailyRounds = rounds.filter(r => r.date === searchDateStr);
-   const dailyComps = pastComps.filter(c => c.date && c.date.includes(dateInput));
+    const dailyComps = pastComps.filter(c => c.date === dateInput);
 
     if (dailyRounds.length === 0 && dailyComps.length === 0) {
         return alert("No data found for this date.");
     }
 
-    let logoHtml = club.logo ? `<img src="${club.logo}" style="max-height: 120px; margin-bottom: 10px;">` : '';
+    let logoHtml = club.logo ? `<img src="${club.logo}" style="max-height: 80px; margin-bottom: 10px;">` : '';
 
     let reportContent = `
     <html>
