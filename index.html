@@ -1219,10 +1219,10 @@ function renderPastComps() {
     return;
   }
   
-  // Filter tournaments safely matching the active year
+  // Filter tournaments to match the selected season year
   const filteredComps = pastComps.filter(c => {
     if (!c.date) return false;
-    // Safely reads the 4-digit year whether saved as yyyy-mm-dd or dd/mm/yyyy
+    // Safely reads the 4-digit year format
     const year = c.date.includes('-') ? c.date.split('-')[0] : c.date.split('/')[2];
     return year === currentSeason;
   });
@@ -1232,7 +1232,7 @@ function renderPastComps() {
     return;
   }
   
-  // Render titles out safely onto your list view
+  // Display only the filtered tournaments using your file's existing systems
   filteredComps.forEach((c) => {
     listEl.innerHTML += `
       <div class="item-row">
