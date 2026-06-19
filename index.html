@@ -92,7 +92,7 @@
             </div>
             <div class="card" id="recent-rounds-card">
                 <h3>Recent Rounds</h3>
-                <select id="dashSeason" onchange="renderDashboard(); renderPastComps()"></select>
+              <select id="dashSeason" onchange="renderDashboard(); renderPastComps()"></select>
                 <div id="dash-list"></div>
 <button class="btn-share" onclick="exportMasterReport()" style="margin-top:10px; background: #000;">
     Print Master Report (All Events)
@@ -1221,7 +1221,6 @@ function renderPastComps() {
   
   // Filter tournaments to match the selected season year
   const filteredComps = pastComps.filter(c => {
-    // Extracts the 4-digit year from the date format (e.g., "2026")
     const year = c.date.includes('-') ? c.date.split('-')[0] : c.date.split('/')[2];
     return year === currentSeason;
   });
@@ -1231,8 +1230,8 @@ function renderPastComps() {
     return;
   }
   
-  // Display only the filtered tournaments
-  filteredComps.forEach((c, index) => {
+  // Display only the filtered tournaments using your existing viewDetail handler
+  filteredComps.forEach((c) => {
     listEl.innerHTML += `
       <div class="item-row">
         <div>
@@ -1240,8 +1239,7 @@ function renderPastComps() {
           <small>${formatDateDisplay(c.date)} - ${c.courseName}</small>
         </div>
         <div>
-          <button class="btn-outline" onclick="viewPastCompDetail(${index})">View Leaderboard</button>
-          <button class="btn-del" onclick="deletePastComp(${index})">Del</button>
+          <button class="btn-outline" onclick="viewDetail('${c.date}', '${c.courseId}')">View Leaderboard</button>
         </div>
       </div>
     `;
