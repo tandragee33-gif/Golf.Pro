@@ -427,20 +427,21 @@ function toggleAppMode() {
   const modeSelect = document.getElementById('app-mode-select');
   const mode = modeSelect.value;
   
-  // Set your secret PIN here (you can change '1234' to any numbers you want)
+  // Set your secret PIN right here! (Change "1234" to whatever numbers you prefer)
   const secretPin = "1234"; 
 
-  // If trying to switch to Admin, ask for the PIN code
+  // If a player tries to click back into Admin Mode, prompt for the PIN
   if (mode === 'admin') {
-    const enteredPin = prompt("Please enter the Admin PIN to unlock management mode:");
+    const enteredPin = prompt("Please enter the Admin PIN to unlock management features:");
     
     if (enteredPin !== secretPin) {
-      alert("Incorrect PIN! Returning to Player Mode.");
-      modeSelect.value = "player"; // Force selection back to player mode
-      return; // Stop here and don't unlock anything
+      alert("Incorrect PIN! Access denied.");
+      modeSelect.value = "player"; // Force the drop-down selector back to Player view
+      return; 
     }
   }
   
+  // List of all administration navigation menu buttons to hide
   const adminTabs = [
     document.getElementById('btn-dash'),     
     document.getElementById('btn-team'),     
@@ -454,14 +455,17 @@ function toggleAppMode() {
   const lockRoundBtn = document.getElementById('btn-lock-round'); 
 
   if (mode === 'player') {
+    // 1. Hide the admin buttons away using your lock-hidden CSS class rule
     adminTabs.forEach(tabBtn => {
       if (tabBtn) tabBtn.classList.add('lock-hidden');
     });
     if (lockRoundBtn) lockRoundBtn.classList.add('lock-hidden');
     
+    // 2. Instantly force the active view screen to the score entry page
     showTab('tab-comp');
-    updateLiveLeaderboard();
+    if (typeof updateLiveLeaderboard === 'function') updateLiveLeaderboard();
   } else {
+    // Admin Mode verified: Bring back menu visibility safely
     adminTabs.forEach(tabBtn => {
       if (tabBtn) tabBtn.classList.remove('lock-hidden');
     });
@@ -987,26 +991,36 @@ function calculateLiveStableford() {
   document.getElementById('live-total-gross').innerText = totalGross;
   document.getElementById('live-total-points').innerText = totalPoints;
 }
-    function showTab(id) {
-        document.querySelectorAll('.tab-content').forEach(t => t.classList.add('hidden'));
-        document.querySelectorAll('.nav button').forEach(b => b.classList.remove('active'));
-        document.getElementById(id).classList.remove('hidden');
-        document.getElementById('btn-' + id.split('-')[1]).classList.add('active');
-        
-        loadData();
-        if(id === 'tab-team') renderTeamSelector();
-        if(id === 'tab-setup') renderAdmin();
-        if(id === 'tab-dash') { closeDetail(); updateSeasonDropdown(); renderDashboard(); renderPastComps(); }
-        if(id === 'tab-stats') renderStats();
-        if(id === 'tab-comp') populateRoundSelectors();
-        if(id === 'tab-doubles') {
-            renderDoublesSelector();
-            const now = new Date();
-            document.getElementById('dbDate').value = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`;
-        }
-        if(id === 'tab-pairs' || id === 'tab-singles') renderMatchplay(id.split('-')[1]);
-    }
+   function showTab(id) {
+  // Get what view mode we are currently on
+  const modeSelect = document.getElementById('app-mode-select');
+  const currentMode = modeSelect ? modeSelect.value : 'admin';
 
+  // SAFETY SECURE LOCK: If in Player Mode, block access to any tab except "Enter Score"
+  if (currentMode === 'player' && id !== 'tab-comp') {
+    alert("Access Denied! Switch view to Admin Mode to view this screen.");
+    // Keep the "Enter Score" tab button looking highlighted
+    document.querySelectorAll('.nav button').forEach(b => b.classList.remove('active'));
+    const compBtn = document.getElementById('btn-comp');
+    if (compBtn) compBtn.classList.add('active');
+    return; // Force stop right here
+  }
+
+  // Your original tab switching actions
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.add('hidden'));
+  document.querySelectorAll('.nav button').forEach(b => b.classList.remove('active'));
+  document.getElementById(id).classList.remove('hidden');
+  document.getElementById('btn-' + id.split('-')[1]).classList.add('active');
+  
+  loadData(); 
+  if(id === 'tab-team') renderTeamSelector();
+  if(id === 'tab-setup') renderAdmin();
+  if(id === 'tab-dash') { closeDetail(); updateSeasonDropdown(); renderDashboard(); renderPastComps(); }
+  if(id === 'tab-stats') renderStats();
+  if(id === 'tab-comp') populateRoundSelectors();
+  if(id === 'tab-doubles') { renderDoublesSelector(); const now = new Date(); document.getElementById('dbDate').value = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`; }
+  if(id === 'tab-pairs' || id === 'tab-singles') renderMatchplay(id.split('-')[1]);
+}
 function populateRoundSelectors() {
     const cSel = document.getElementById('rCourse');
     const pSel = document.getElementById('rPlayer');
