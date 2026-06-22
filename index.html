@@ -1467,6 +1467,7 @@ nearPin: document.getElementById('rNearPin').value === "Yes"
     // 2. Refresh all the screens so they show the new data
     renderStats();     
     renderDashboard(); 
+// NEW STEP: Update the live leaderboard right now BEFORE the date box gets wiped out! if (typeof updateLiveLeaderboard === 'function') { updateLiveLeaderboard(); } 
 
     // 3. The "Eraser": Wipe the form clean for next time
     resetRoundForm();
