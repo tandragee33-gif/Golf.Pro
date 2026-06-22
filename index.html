@@ -1,7 +1,3 @@
-// This is safe code
-// It has points when entering score
-//Uses golfcourseapi.com
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -428,36 +424,44 @@
 // --- PLAYER MODE & LIVE LEADERBOARD MODULE ---
 
 function toggleAppMode() {
-  const mode = document.getElementById('app-mode-select').value;
+  const modeSelect = document.getElementById('app-mode-select');
+  const mode = modeSelect.value;
   
-  // Target the structural nav items we want locked down
+  // Set your secret PIN here (you can change '1234' to any numbers you want)
+  const secretPin = "1234"; 
+
+  // If trying to switch to Admin, ask for the PIN code
+  if (mode === 'admin') {
+    const enteredPin = prompt("Please enter the Admin PIN to unlock management mode:");
+    
+    if (enteredPin !== secretPin) {
+      alert("Incorrect PIN! Returning to Player Mode.");
+      modeSelect.value = "player"; // Force selection back to player mode
+      return; // Stop here and don't unlock anything
+    }
+  }
+  
   const adminTabs = [
-    document.getElementById('btn-dash'),     // History
-    document.getElementById('btn-team'),     // Team
-    document.getElementById('btn-doubles'),  // Doubles
-    document.getElementById('btn-stats'),    // Scorecards
-    document.getElementById('btn-pairs'),    // Pairs KO
-    document.getElementById('btn-singles'),  // Singles KO
-    document.getElementById('btn-setup')     // Setup panel
+    document.getElementById('btn-dash'),     
+    document.getElementById('btn-team'),     
+    document.getElementById('btn-doubles'),  
+    document.getElementById('btn-stats'),    
+    document.getElementById('btn-pairs'),    
+    document.getElementById('btn-singles'),  
+    document.getElementById('btn-setup')     
   ];
 
-  // Target specific administrative buttons inside other screens
-  const lockRoundBtn = document.getElementById('btn-lock-round'); // Handicap adjustments
+  const lockRoundBtn = document.getElementById('btn-lock-round'); 
 
   if (mode === 'player') {
-    // 1. Hide administrative navigation menus completely
     adminTabs.forEach(tabBtn => {
       if (tabBtn) tabBtn.classList.add('lock-hidden');
     });
-    
-    // 2. Lock down and hide the handicap adjustments option
     if (lockRoundBtn) lockRoundBtn.classList.add('lock-hidden');
     
-    // 3. Immediately move player focus to score tracking screen
     showTab('tab-comp');
     updateLiveLeaderboard();
   } else {
-    // Admin Mode: Bring back access visibility over everything safely
     adminTabs.forEach(tabBtn => {
       if (tabBtn) tabBtn.classList.remove('lock-hidden');
     });
