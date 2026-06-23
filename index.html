@@ -478,13 +478,16 @@ function updateLiveLeaderboard() {
   if (!tbody) return;
 
   // 1. Check the date input box first
-  let currentDateInput = document.getElementById('rDate') ? document.getElementById('rDate').value : '';
-  
-  // If the box was cleared out after saving, find the latest date in your records instead
-  if (!currentDateInput && rounds.length > 0) {
-    const sortedRounds = [...rounds].sort((a, b) => new Date(b.date) - new Date(a.date));
-    currentDateInput = sortedRounds[0].date;
-  }
+let currentDateInput = document.getElementById('rDate') ? document.getElementById('rDate').value : '';
+
+// FIX: If no explicit manual date is selected, force it to strictly read today's actual calendar date
+if (!currentDateInput) {
+    const today = new Date();
+    const dd = String(today.getDate()).padStart(2, '0');
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const yyyy = today.getFullYear();
+    currentDateInput = dd + '/' + mm + '/' + yyyy; // Matches your dd/mm/yyyy system format
+}
 
   // 2. Filter rounds using that active date
   let activeRounds = rounds.filter(r => {
@@ -997,6 +1000,11 @@ function calculateLiveStableford() {
   // Put overall total values into the HTML box above the Save button
   document.getElementById('live-total-gross').innerText = totalGross;
   document.getElementById('live-total-points').innerText = totalPoints;
+// Add this line at the very bottom inside your calculateLiveStableford() function
+if (typeof updateLiveLeaderboard === 'function') {
+    // Temporarily inject the active scoring session into the view pool so it shows instantly
+    updateLiveLeaderboard();
+}
 }
    function showTab(id) {
   // Get what view mode we are currently on
@@ -1391,7 +1399,8 @@ function saveRound() {
     const cId = document.getElementById('rCourse').value;
     const pId = document.getElementById('rPlayer').value;
     
-    if(!cId || !pId) return alert("Select course and player.");
+    if(!cId || !pId)
+return alert("Select course and player.");
     
     // Find the course and player objects first
     const crs = courses.find(c => String(c.id) === String(cId));
@@ -1404,13 +1413,13 @@ function saveRound() {
     const scs = Array.from(document.querySelectorAll('.round-scores-val')).map(i => parseInt(i.value) || 0);
 
     // Calculate the points array
-const ptsArray = scs.map((s, i) => {
+    const ptsArray = scs.map((s, i) => {
         if(s <= 0) return 0;
         
         const par = parseInt(crs.pars[i]) || 0;
         const si = parseInt(crs.si[i]) || 0; // Force to Number
-       const hc = Math.round(parseFloat(plr.handicap)) || 0; // Round the decimal
-console.log("Player:", plr.name, "Raw HC:", plr.handicap, "Rounded HC:", hc); 
+        const hc = Math.round(parseFloat(plr.handicap)) || 0; // Round the decimal
+        console.log("Player:", plr.name, "Raw HC:", plr.handicap, "Rounded HC:", hc); 
         
         // 1. Calculate strokes for this hole
         // If handicap is 1, and si is 1: (0) + (1 >= 1 ? 1 : 0) = 1 stroke.
@@ -1436,8 +1445,8 @@ console.log("Player:", plr.name, "Raw HC:", plr.handicap, "Rounded HC:", hc);
         scores: scs,
         pointsArray: ptsArray, // This connects to your Team tab
         season: isoDate.split('-')[0],
-longDrive: document.getElementById('rLongDrive').value === "Yes",
-nearPin: document.getElementById('rNearPin').value === "Yes"
+        longDrive: document.getElementById('rLongDrive').value === "Yes",
+        nearPin: document.getElementById('rNearPin').value === "Yes"
     };
 
     if(id) {
@@ -1465,15 +1474,29 @@ nearPin: document.getElementById('rNearPin').value === "Yes"
     saveData();
 
     // 2. Refresh all the screens so they show the new data
-    renderStats();     
+    renderStats();  
     renderDashboard(); 
-// NEW STEP: Update the live leaderboard right now BEFORE the date box gets wiped out! if (typeof updateLiveLeaderboard === 'function') { updateLiveLeaderboard(); } 
+
+    // NEW STEP: Update the live leaderboard right now BEFORE the date box gets wiped out! 
+    if (typeof updateLiveLeaderboard === 'function') {
+        updateLiveLeaderboard(); 
+    } 
 
     // 3. The "Eraser": Wipe the form clean for next time
     resetRoundForm();
 
     // 4. Reset the box colors back to neutral
     document.querySelectorAll('.round-scores-val').forEach(input => colorLive(input));
+
+    // --- STEP 3 MODIFICATION: AUTOMATIC LOCKDOWN ON SAVE ---
+    // If an app mode selector element exists, force it back to player mode to safeguard options
+    const modeSelect = document.getElementById('app-mode-select');
+    if (modeSelect) {
+        modeSelect.value = "player";
+        if (typeof toggleAppMode === 'function') {
+            toggleAppMode();
+        }
+    }
 
     // 5. Tell the user it's done, then move to the Stats page
     alert("Round Saved!");
