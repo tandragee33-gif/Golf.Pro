@@ -1291,14 +1291,33 @@ function updateSeasonDropdown() {
     }
 
 function viewDetail(date, courseId) {
-    const filtered = rounds.filter(r => r.date === date && String(r.courseId) === String(courseId)).sort((a,b) => {
-    if (b.points !== a.points) return b.points - a.points;
-    // If points are equal, use the tie-breaker
-    return getTieBreaker(b.pointsArray) - getTieBreaker(a.pointsArray);
-});
+    // 1. Gather all saved rounds for this course and date
+    let filtered = rounds.filter(r => r.date === date && String(r.courseId) === String(courseId));
     
-    if(filtered.length === 0) return;
+    // 2. Check if anyone is currently live-typing a round that matches this date/course but isn't saved yet
+    if (window.currentLiveRoundId) {
+        const liveRoundExists = filtered.some(r => String(r.id) === String(window.currentLiveRoundId));
+        if (!liveRoundExists) {
+            // Find the active live round from your global rounds array and make sure it's included
+            const activeLive = rounds.find(r => String(r.id) === String(window.currentLiveRoundId));
+            if (activeLive && activeLive.date === date && String(activeLive.courseId) === String(courseId)) {
+                filtered.push(activeLive);
+            }
+        }
+    }
+
+    // 3. Sort them with highest points at the top, using your standard tie-breakers
+    filtered.sort((a, b) => {
+        if (b.points !== a.points) return b.points - a.points;
+        if (typeof getTieBreaker === "function") {
+            return getTieBreaker(b.pointsArray) - getTieBreaker(a.pointsArray);
+        }
+        return 0;
+    });
     
+    if (filtered.length === 0) return;
+    
+    // 4. Update the visual screen layout
     document.getElementById('dash-main-view').classList.add('hidden');
     document.getElementById('dash-detail').classList.remove('hidden');
     document.getElementById('detail-title').innerText = filtered[0].courseName;
@@ -1306,19 +1325,28 @@ function viewDetail(date, courseId) {
     document.getElementById('report-club-name').innerText = club.name;
     
     const rImg = document.getElementById('report-logo-img');
-    if(club.logo) { rImg.src = club.logo; rImg.style.display = 'inline-block'; }
+    if (club.logo) { rImg.src = club.logo; rImg.style.display = 'inline-block'; }
 
-    // Updated Table Body with Awards Column
+    // 5. Build the leaderboard table rows dynamically
     document.getElementById('detail-results').innerHTML = filtered.map((r, i) => {
         let awards = "";
         if (r.longDrive) awards += "🚀";
         if (r.nearPin) awards += "🎯";
         
+        // Track hole completion progress live on the screen!
+        let holeProgress = "Live Typing...";
+        if (r.lastHoleCompleted) {
+            holeProgress = r.lastHoleCompleted === 18 ? "Finished" : `Hole: ${r.lastHoleCompleted}`;
+        } else if (r.scores && r.scores.some(s => s > 0)) {
+            const lastHole = r.scores.reduce((max, s, idx) => s > 0 ? idx + 1 : max, 0);
+            holeProgress = lastHole === 18 ? "Finished" : `Hole: ${lastHole}`;
+        }
+        
         return `<tr>
-            <td>${i+1}</td>
-            <td>${r.playerName}</td>
-           <td style="color: ${getScoreColor(r.points)}; font-weight: bold;">${r.points}</td>
-            <td style="font-size:1.2em;">${awards}</td>
+           <td>${i + 1}</td>
+           <td><b>${r.playerName}</b><br><small style="color:#e67e22; font-weight:bold;">${holeProgress}</small></td>
+           <td style="font-weight:bold; color:#2c3e50;">${r.points}</td>
+           <td><span style="font-size:14px;">${awards}</span></td>
         </tr>`;
     }).join('');
 }
