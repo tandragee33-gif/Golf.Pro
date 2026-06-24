@@ -544,10 +544,78 @@ function getScoreColor(pts) {
     return '#333';                   // Black (Standard)
 }
 function colorLive(input) {
-    const val = parseInt(input.value);
-    if (val >= 7) { input.style.color = '#e74c3c'; }      // Red (Bad)
-    else if (val <= 3 && val > 0) { input.style.color = '#27ae60'; } // Green (Good)
-    else { input.style.color = '#333'; }                 // Black (Normal)
+    // 1. Maintain your original text color-changing rules
+    const val = parseInt(input.value) || 0;
+    if (val <= 3 && val > 0) { 
+        input.style.color = '#27ae60'; // Green
+    } else { 
+        input.style.color = '#333'; // Black
+    }
+
+    // 2. LIVE CLOUD SYNCING: Grab current selections
+    const cId = document.getElementById('rCourse').value;
+    const pId = document.getElementById('rPlayer').value;
+    if (!cId || !pId) return; // Stop if they haven't picked a course/player yet
+
+    const crs = courses.find(c => String(c.id) === String(cId));
+    const plr = players.find(p => String(p.id) === String(pId));
+    if (!crs || !plr) return;
+
+    // 3. Read all 18 boxes right now
+    const scs = Array.from(document.querySelectorAll('.round-scores-val')).map(i => parseInt(i.value) || 0);
+    const isoDate = parseDateInput(document.getElementById('rDate').value);
+    const editId = document.getElementById('editRoundId').value;
+    const activeRoundId = editId ? parseInt(editId) : window.currentLiveRoundId || Date.now();
+    
+    // Save this ID so it stays consistent while typing a new round
+    if (!editId && !window.currentLiveRoundId) {
+        window.currentLiveRoundId = activeRoundId;
+    }
+
+    // 4. Calculate Stableford points on the fly for the live leaderboard
+    const ptsArray = scs.map((s, i) => {
+        if (s <= 0) return 0;
+        const par = parseInt(crs.pars[i]) || 0;
+        const si = parseInt(crs.si[i]) || 0;
+        const hc = Math.round(parseFloat(plr.handicap)) || 0;
+        const allow = Math.floor(hc / 18) + (hc % 18 >= si ? 1 : 0);
+        return Math.max(0, par - (s - allow) + 2);
+    });
+    const totalPts = ptsArray.reduce((a, b) => a + b, 0);
+
+    // 5. Track progress hole number
+    const lastHoleIndex = scs.map((s, idx) => s > 0 ? idx + 1 : 0);
+    const currentProgress = Math.max(0, ...lastHoleIndex);
+
+    // 6. Package it up
+    const liveRound = {
+        id: activeRoundId,
+        date: isoDate,
+        courseId: crs.id,
+        courseName: crs.name,
+        playerId: plr.id,
+        playerName: plr.name,
+        points: totalPts,
+        scores: scs,
+        pointsArray: ptsArray,
+        season: isoDate.split('-')[0],
+        longDrive: document.getElementById('rLongDrive').value === "Yes",
+        nearPin: document.getElementById('rNearPin').value === "Yes",
+        lastHoleCompleted: currentProgress
+    };
+
+    // 7. Overwrite or insert this round into your local array
+    const exists = rounds.some(x => String(x.id) === String(activeRoundId));
+    if (exists) {
+        rounds = rounds.map(x => String(x.id) === String(activeRoundId) ? liveRound : x);
+    } else {
+        rounds.push(liveRound);
+    }
+
+    // 8. Fire it directly up to Firebase instantly!
+    if (typeof saveData === "function") {
+        saveData(); 
+    }
 }
 // --- GOOGLE FIREBASE CONNECTION ---
 const firebaseConfig = {
@@ -1559,32 +1627,38 @@ function saveRound() {
 
     function deleteRound(id) { if(confirm("Delete?")) { rounds = rounds.filter(x => String(x.id) !== String(id)); saveData(); renderStats(); renderDashboard(); } }
 
-    function resetRoundForm() {
-        document.getElementById('editRoundId').value = '';
-        document.querySelectorAll('.round-scores-val')
-.forEach(i => {
-    i.value = '';
-    i.style.color = '#333';
-});
-document.querySelectorAll('.round-scores-val')
-    .forEach(i => {
-        i.style.color = '#333';
-    });
 function resetRoundForm() {
+    // --- STEP 3 FIXED: Clear the live typing tracker ---
+    window.currentLiveRoundId = null; 
+
     // This clears the live scores and points displays when starting over
+    if (document.getElementById('editRoundId')) {
+        document.getElementById('editRoundId').value = '';
+    }
+    
     if (document.getElementById('live-total-gross')) {
         document.getElementById('live-total-gross').innerText = '0';
         document.getElementById('live-total-points').innerText = '0';
         document.querySelectorAll('.live-hole-pts').forEach(lbl => lbl.innerText = '0');
     }
-}
- document.getElementById('rLongDrive').value = 'No';
-document.getElementById('rNearPin').value = 'No';
-        const now = new Date();
-        document.getElementById('rDate').value = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`;
-        populateRoundSelectors();
-document.querySelectorAll('.round-scores-val')[0]?.focus();
+
+    document.querySelectorAll('.round-scores-val').forEach(i => {
+        i.value = '';
+        i.style.color = '#333';
+    });
+
+    if (document.getElementById('rLongDrive')) document.getElementById('rLongDrive').value = 'No';
+    if (document.getElementById('rNearPin')) document.getElementById('rNearPin').value = 'No';
+    
+    const now = new Date();
+    const dateInput = document.getElementById('rDate');
+    if (dateInput) {
+        dateInput.value = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`;
     }
+    
+    if (typeof populateRoundSelectors === "function") populateRoundSelectors();
+    document.querySelectorAll('.round-scores-val')[0]?.focus();
+}
 
     function savePlayer() {
         const id = document.getElementById('editPlayerId').value, p = { id: id || 'p' + Date.now(), name: document.getElementById('pName').value, handicap: document.getElementById('pHC').value };
