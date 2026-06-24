@@ -1125,14 +1125,13 @@ function calculateLiveStableford() {
     totalPoints += holePoints;
   });
 
-  // Put overall total values into the HTML box above the Save button
+// Put overall total values into the HTML box above the Save button
   document.getElementById('live-total-gross').innerText = totalGross;
   document.getElementById('live-total-points').innerText = totalPoints;
-if (typeof renderDashboard === 'function') renderDashboard(); if (typeof updateLiveLeaderboard === 'function') updateLiveLeaderboard(); } 
-// Add this line at the very bottom inside your calculateLiveStableford() function
-if (typeof updateLiveLeaderboard === 'function') {
-    // Temporarily inject the active scoring session into the view pool so it shows instantly
-    updateLiveLeaderboard();
+
+  // Automatically refresh dashboards and live leaderboards on every keypress
+  if (typeof renderDashboard === 'function') renderDashboard();
+  if (typeof updateLiveLeaderboard === 'function') updateLiveLeaderboard();
 }
 // Automatically refresh the leaderboard right here whenever a player types a score!
   if (typeof updateLiveLeaderboard === 'function') {
