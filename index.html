@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Golf Pro Manager - Tournament Edition</title>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
     <style>
         :root { --primary: #1b5e20; --accent: #ffd700; --danger: #d32f2f; --light: #f4f4f4; --success: #2e7d32; --info: #0288d1; }
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; background: #e0e0e0; color: #333; }
@@ -547,6 +549,20 @@ function colorLive(input) {
     else if (val <= 3 && val > 0) { input.style.color = '#27ae60'; } // Green (Good)
     else { input.style.color = '#333'; }                 // Black (Normal)
 }
+// --- GOOGLE FIREBASE CONNECTION ---
+const firebaseConfig = {
+  apiKey: "AIzaSyAsni1SXEb2GGxQk4cHsh0PBj-asRMmRJ0",
+  authDomain: "golfprov1.firebaseapp.com",
+  databaseURL: "https://golfprov1-default-rtdb.firebaseio.com", // Linked to your exact instance!
+  projectId: "golfprov1",
+  storageBucket: "golfprov1.firebasestorage.app",
+  messagingSenderId: "154726704641",
+  appId: "1:154726704641:web:88b1c15b25c6d2d2680200"
+};
+
+// Start the cloud engine
+firebase.initializeApp(firebaseConfig);
+const database = firebase.database();
     let players = [], courses = [], rounds = [], pairsT = null, singlesT = null, pastComps = [], club = { name: "Golf Pro Manager", logo: "" };
     let tempTeams = [];
 let selectedCourseData = null;
@@ -576,36 +592,46 @@ function getTieBreaker(pointsArray) {
         return `${parts[2]}-${parts[1]}-${parts[0]}`;
     }
 
+// --- UPGRADED CLOUD LOADING MECHANISM ---
 function loadData() {
-    // 1. Core Data
-    players = JSON.parse(localStorage.getItem('g_players')) || [];
-    courses = JSON.parse(localStorage.getItem('g_courses')) || [];
-    rounds = JSON.parse(localStorage.getItem('g_rounds')) || [];
-    pastComps = JSON.parse(localStorage.getItem('g_pastComps')) || [];
-    club = JSON.parse(localStorage.getItem('g_club')) || { name: "Golf Pro Manager", logo: "" };
-    competitionTeams = JSON.parse(localStorage.getItem('g_compTeams')) || [];
-
-    // 2. Load the KO Memory (FIXED with || [])
-    pairsT = JSON.parse(localStorage.getItem('g_pairsT')) || [];
-    singlesT = JSON.parse(localStorage.getItem('g_singlesT')) || [];
-
-    // 3. Draw Screens
+  // Pull your entire dataset down from the Firebase cloud database
+  database.ref('golf_data/').once('value').then((snapshot) => {
+    const data = snapshot.val();
+    
+    if (data) {
+      // If cloud data exists, load it into your arrays
+      players = data.players || [];
+      courses = data.courses || [];
+      rounds = data.rounds || [];
+      pastComps = data.pastComps || [];
+      club = data.club || { name: "Golf Pro Manager", logo: "" };
+      competitionTeams = data.competitionTeams || [];
+      pairsT = data.pairsT || [];
+      singlesT = data.singlesT || [];
+    } else {
+      // Fallback: If cloud is empty, look for older local phone backups
+      players = JSON.parse(localStorage.getItem('g_players')) || [];
+      courses = JSON.parse(localStorage.getItem('g_courses')) || [];
+      rounds = JSON.parse(localStorage.getItem('g_rounds')) || [];
+      pastComps = JSON.parse(localStorage.getItem('g_pastComps')) || [];
+      club = JSON.parse(localStorage.getItem('g_club')) || { name: "Golf Pro Manager", logo: "" };
+      competitionTeams = JSON.parse(localStorage.getItem('g_compTeams')) || [];
+      pairsT = JSON.parse(localStorage.getItem('g_pairsT')) || [];
+      singlesT = JSON.parse(localStorage.getItem('g_singlesT')) || [];
+    }
+    
+    // Run all your standard layout and graphic functions safely
     try { 
         if (typeof renderActiveTeams === "function") renderActiveTeams(); 
-    } catch(e) {
-        console.log("Team draw failed"); 
-    }
+    } catch(e) { console.log("Team draw failed"); }
     
     try { 
         if (typeof renderMatchplay === "function") {
-            renderMatchplay('pairs');
-            renderMatchplay('singles');
+           renderMatchplay('pairs');
+           renderMatchplay('singles');
         }
-    } catch(e) {
-        console.log("Matchplay draw failed"); 
-    }
+    } catch(e) { console.log("Matchplay draw failed"); }
 
-    // 4. Load the Doubles Combined
     try {
         const saved = localStorage.getItem('g_tempTeams');
         if (saved) {
@@ -614,25 +640,26 @@ function loadData() {
         } else {
             tempTeams = [];
         }
-    } catch(e) {
-        console.log("Doubles draw failed"); 
-    }
+    } catch(e) { console.log("Doubles draw failed"); }
 
-    // 5. Force Draw for empty KOs (UPDATED)
     if (pairsT.length === 0 && typeof renderMatchplay === "function") {
-        renderMatchplay('pairs');
+       renderMatchplay('pairs');
     }
     if (singlesT.length === 0 && typeof renderMatchplay === "function") {
-        renderMatchplay('singles');
+       renderMatchplay('singles');
     }
-} // <--- loadData closes perfectly here.
 
-// All the stray duplicate text that was here has been DELETED.
+    // Safely refresh standard registries and live dashboards if they exist
+    if (typeof renderRegistry === "function") renderRegistry();
+    if (typeof renderStats === "function") renderStats();
+    if (typeof renderDashboard === "function") renderDashboard();
+    if (typeof updateLiveLeaderboard === 'function') {
+        updateLiveLeaderboard();
+    }
 
-function saveGolfApiKey() {
-    const key = document.getElementById('golfApiKey').value;
-    localStorage.setItem('golf_api_key', key);
-    alert('API Key Saved!');
+  }).catch((err) => {
+    console.error("Cloud data loading failed: ", err);
+  });
 }
 async function searchCourse() {
 
@@ -868,16 +895,34 @@ window.tempYards =
 alert(JSON.stringify(selectedTee.holes[0]));
 }
 
-    function saveData() {
-        localStorage.setItem('g_players', JSON.stringify(players));
-        localStorage.setItem('g_courses', JSON.stringify(courses));
-        localStorage.setItem('g_rounds', JSON.stringify(rounds));
-        localStorage.setItem('g_pairsT', JSON.stringify(pairsT));
-        localStorage.setItem('g_singlesT', JSON.stringify(singlesT));
-        localStorage.setItem('g_pastComps', JSON.stringify(pastComps));
-        localStorage.setItem('g_club', JSON.stringify(club));
-localStorage.setItem('g_compTeams', JSON.stringify(competitionTeams));
-    }
+// --- UPGRADED SAVING MECHANISM ---
+function saveData() {
+  // Keep your local storage backup exactly as it was
+  localStorage.setItem('g_players', JSON.stringify(players));
+  localStorage.setItem('g_courses', JSON.stringify(courses));
+  localStorage.setItem('g_rounds', JSON.stringify(rounds));
+  localStorage.setItem('g_pairsT', JSON.stringify(pairsT));
+  localStorage.setItem('g_singlesT', JSON.stringify(singlesT));
+  localStorage.setItem('g_pastComps', JSON.stringify(pastComps));
+  localStorage.setItem('g_club', JSON.stringify(club));
+  localStorage.setItem('g_compTeams', JSON.stringify(competitionTeams));
+
+  // Push EVERYTHING up to your Google Firebase Cloud instantly!
+  database.ref('golf_data/').set({
+    players: players,
+    courses: courses,
+    rounds: rounds,
+    pairsT: pairsT,
+    singlesT: singlesT,
+    pastComps: pastComps,
+    club: club,
+    competitionTeams: (typeof competitionTeams !== 'undefined' ? competitionTeams : [])
+  }).then(() => {
+    console.log("Cloud synced perfectly.");
+  }).catch((err) => {
+    console.error("Cloud syncing issue: ", err);
+  });
+}
 
     // BACKUP FUNCTION
     function backupData() {
@@ -2105,6 +2150,18 @@ function renderSavedDoubles() {
         // Refresh detail view layout to visually gray out the button immediately
         window.viewDetail(date, courseId);
     }
+// Keep a live cloud connection open so everyone's leaderboard updates automatically!
+database.ref('golf_data/rounds').on('value', (snapshot) => {
+  const cloudRounds = snapshot.val();
+  if (cloudRounds) {
+    rounds = cloudRounds;
+    if (typeof updateLiveLeaderboard === 'function') {
+      updateLiveLeaderboard(); 
+    }
+    if (typeof renderStats === "function") renderStats();
+    if (typeof renderDashboard === "function") renderDashboard();
+  }
+});
 })();
 </script>
 </body>
