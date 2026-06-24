@@ -1133,12 +1133,8 @@ function calculateLiveStableford() {
   if (typeof renderDashboard === 'function') renderDashboard();
   if (typeof updateLiveLeaderboard === 'function') updateLiveLeaderboard();
 }
-// Automatically refresh the leaderboard right here whenever a player types a score!
-  if (typeof updateLiveLeaderboard === 'function') {
-      updateLiveLeaderboard();
-  }
-}
-   function showTab(id) {
+
+function showTab(id) {
   // Get what view mode we are currently on
   const modeSelect = document.getElementById('app-mode-select');
   const currentMode = modeSelect ? modeSelect.value : 'admin';
