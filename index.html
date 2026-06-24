@@ -1048,7 +1048,7 @@ function setupInputGrids() {
   const roundEl = document.getElementById('round-scores');
   roundEl.innerHTML = '';
   for (let i = 1; i <= 18; i++) {
-    roundEl.innerHTML += ` <div class="hole-input" style="border:1px solid #ddd; border-radius:10px; padding:8px; background:#fafafa; text-align:center;"> <div style="font-size:11px; color:#666;">Hole</div> <div style="font-weight:bold; font-size:16px;">${i}</div> <input type="number" inputmode="numeric" class="round-scores-val" style="font-size:20px; font-weight:bold; text-align:center; margin-top:8px;" oninput="moveToNext(this); colorLive(this); calculateLiveStableford()"> <div style="font-size:11px; margin-top:4px; color:#666;">Pts: <span class="live-hole-pts">0</span></div> </div>`;
+    roundEl.innerHTML += ` <div class="hole-input" style="border:1px solid #ddd; border-radius:10px; padding:8px; background:#fafafa; text-align:center;"> <div style="font-size:11px; color:#666;">Hole</div> <div style="font-weight:bold; font-size:16px;">${i}</div> <input type="number" inputmode="numeric" class="round-scores-val" style="font-size:20px; font-weight:bold; text-align:center; margin-top:8px;" oninput="calculateLiveStableford(); colorLive(this); moveToNext(this);"> <div style="font-size:11px; margin-top:4px; color:#666;">Pts: <span class="live-hole-pts">0</span></div> </div>`;
   }
 
   // COURSE SETUP GRIDS
@@ -1128,6 +1128,7 @@ function calculateLiveStableford() {
   // Put overall total values into the HTML box above the Save button
   document.getElementById('live-total-gross').innerText = totalGross;
   document.getElementById('live-total-points').innerText = totalPoints;
+if (typeof renderDashboard === 'function') renderDashboard(); if (typeof updateLiveLeaderboard === 'function') updateLiveLeaderboard(); } 
 // Add this line at the very bottom inside your calculateLiveStableford() function
 if (typeof updateLiveLeaderboard === 'function') {
     // Temporarily inject the active scoring session into the view pool so it shows instantly
