@@ -564,8 +564,9 @@ function colorLive(input) {
     // 3. Read all 18 boxes right now
     const scs = Array.from(document.querySelectorAll('.round-scores-val')).map(i => parseInt(i.value) || 0);
     const isoDate = parseDateInput(document.getElementById('rDate').value);
-    const editId = document.getElementById('editRoundId').value;
-    const activeRoundId = editId ? parseInt(editId) : window.currentLiveRoundId || Date.now();
+const editId = document.getElementById('editRoundId').value;
+    // FIXED ID: Uses the player and course combo so other devices can track it live
+    const activeRoundId = editId ? editId : `live-${pId}-${cId}`;
     
     // Save this ID so it stays consistent while typing a new round
     if (!editId && !window.currentLiveRoundId) {
