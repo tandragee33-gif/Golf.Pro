@@ -660,14 +660,14 @@ function getTieBreaker(pointsArray) {
         return `${parts[2]}-${parts[1]}-${parts[0]}`;
     }
 
-// --- UPGRADED CLOUD LOADING MECHANISM ---
+// --- UPGRADED CLOUD LOADING MECHANISM (LIVE UPDATES) ---
 function loadData() {
-  // Pull your entire dataset down from the Firebase cloud database
-  database.ref('golf_data/').once('value').then((snapshot) => {
+  // Use .on('value') instead of .once() to keep an open, live data stream between all devices
+  database.ref('golf_data/').on('value', (snapshot) => {
     const data = snapshot.val();
     
     if (data) {
-      // If cloud data exists, load it into your arrays
+      // If cloud data exists, load it into your arrays instantly
       players = data.players || [];
       courses = data.courses || [];
       rounds = data.rounds || [];
@@ -688,15 +688,15 @@ function loadData() {
       singlesT = JSON.parse(localStorage.getItem('g_singlesT')) || [];
     }
     
-    // Run all your standard layout and graphic functions safely
+    // Run all your standard layout and graphic functions safely on every update
     try { 
         if (typeof renderActiveTeams === "function") renderActiveTeams(); 
     } catch(e) { console.log("Team draw failed"); }
     
     try { 
         if (typeof renderMatchplay === "function") {
-           renderMatchplay('pairs');
-           renderMatchplay('singles');
+          renderMatchplay('pairs');
+          renderMatchplay('singles');
         }
     } catch(e) { console.log("Matchplay draw failed"); }
 
@@ -711,21 +711,20 @@ function loadData() {
     } catch(e) { console.log("Doubles draw failed"); }
 
     if (pairsT.length === 0 && typeof renderMatchplay === "function") {
-       renderMatchplay('pairs');
+      renderMatchplay('pairs');
     }
     if (singlesT.length === 0 && typeof renderMatchplay === "function") {
-       renderMatchplay('singles');
+      renderMatchplay('singles');
     }
 
-    // Safely refresh standard registries and live dashboards if they exist
+    // Automatically refresh all live screens whenever a change is synced
     if (typeof renderRegistry === "function") renderRegistry();
     if (typeof renderStats === "function") renderStats();
     if (typeof renderDashboard === "function") renderDashboard();
     if (typeof updateLiveLeaderboard === 'function') {
-        updateLiveLeaderboard();
+       updateLiveLeaderboard();
     }
-
-  }).catch((err) => {
+  }, (err) => {
     console.error("Cloud data loading failed: ", err);
   });
 }
