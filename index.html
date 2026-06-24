@@ -1464,36 +1464,23 @@ function saveRound() {
     const cId = document.getElementById('rCourse').value;
     const pId = document.getElementById('rPlayer').value;
     
-    if(!cId || !pId)
-return alert("Select course and player.");
+    if(!cId || !pId) return alert("Select course and player.");
     
-    // Find the course and player objects first
     const crs = courses.find(c => String(c.id) === String(cId));
     const plr = players.find(p => String(p.id) === String(pId));
     
-    // Safety check in case the course or player wasn't found
     if (!crs || !plr) return alert("Course or Player data missing in Registry.");
 
     const isoDate = parseDateInput(document.getElementById('rDate').value);
     const scs = Array.from(document.querySelectorAll('.round-scores-val')).map(i => parseInt(i.value) || 0);
 
-    // Calculate the points array
     const ptsArray = scs.map((s, i) => {
         if(s <= 0) return 0;
-        
         const par = parseInt(crs.pars[i]) || 0;
-        const si = parseInt(crs.si[i]) || 0; // Force to Number
-        const hc = Math.round(parseFloat(plr.handicap)) || 0; // Round the decimal
-        console.log("Player:", plr.name, "Raw HC:", plr.handicap, "Rounded HC:", hc); 
-        
-        // 1. Calculate strokes for this hole
-        // If handicap is 1, and si is 1: (0) + (1 >= 1 ? 1 : 0) = 1 stroke.
+        const si = parseInt(crs.si[i]) || 0; 
+        const hc = Math.round(parseFloat(plr.handicap)) || 0; 
         const allow = Math.floor(hc / 18) + (hc % 18 >= si ? 1 : 0);
-        
-        // 2. Calculate Net Score
         const netScore = s - allow;
-        
-        // 3. Stableford formula: Par - Net + 2 (cannot be less than 0)
         return Math.max(0, par - netScore + 2);
     });
 
@@ -1508,7 +1495,7 @@ return alert("Select course and player.");
         playerName: plr.name,
         points: totalPts,
         scores: scs,
-        pointsArray: ptsArray, // This connects to your Team tab
+        pointsArray: ptsArray, 
         season: isoDate.split('-')[0],
         longDrive: document.getElementById('rLongDrive').value === "Yes",
         nearPin: document.getElementById('rNearPin').value === "Yes"
@@ -1519,47 +1506,35 @@ return alert("Select course and player.");
     } else {
         rounds.push(r);
     }
-// // --- Society Handicap Adjustment ---
-// // Winner gets cut (-2), Last place gets a buffer (+1)
-// const allScores = rounds.filter(r => r.date === isoDate).sort((a,b) => b.points - a.points);
-// 
-// if (allScores.length >= 3) { // Only adjust if at least 3 players played
-//     const winnerId = allScores[0].playerId;
-//     const lastId = allScores[allScores.length - 1].playerId;
-// 
-//     players = players.map(p => {
-//         let newHC = parseFloat(p.handicap) || 0;
-//         if (p.id === winnerId) newHC -= 2.0; // Cut the winner
-//         if (p.id === lastId) newHC += 1.0;   // Help the last player
-//         
-//         return { ...p, handicap: newHC.toFixed(1) };
-//     });
-// }
-    // 1. Save the data to the memory
+
+    // 1. Save data locally and to Firebase Cloud immediately
     saveData();
 
-    // 2. Refresh all the screens so they show the new data
+    // 2. Refresh screens locally
     renderStats();  
     renderDashboard(); 
+    if (typeof calculateTeamResults === "function") calculateTeamResults();
+    if (typeof calculateDoublesResults === "function") calculateDoublesResults();
 
-    // 3. The "Eraser": Wipe the form clean for next time
+    // 3. Clear the form fields
     resetRoundForm();
 
-    // 4. Reset the box colors back to neutral
-    document.querySelectorAll('.round-scores-val').forEach(input => colorLive(input));
+    // 4. Reset box colors
+    document.querySelectorAll('.round-scores-val').forEach(input => {
+        if (typeof colorLive === "function") colorLive(input);
+    });
 
-    // --- STEP 3 MODIFICATION: AUTOMATIC LOCKDOWN ON SAVE ---
-    // If an app mode selector element exists, force it back to player mode to safeguard options
+    // 5. Automatic lockdown back to player mode view
     const modeSelect = document.getElementById('app-mode-select');
     if (modeSelect) {
         modeSelect.value = "player";
         if (typeof toggleAppMode === 'function') {
-            toggleAppMode();
+           toggleAppMode();
         }
     }
 
-    // 5. Tell the user it's done, then move to the Stats page
-    alert("Round Saved!");
+    // 6. Alert user round is synced
+    alert("Round Saved to Cloud!");
     showTab('tab-stats');
 }
 
