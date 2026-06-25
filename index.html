@@ -2234,6 +2234,20 @@ database.ref('golf_data/rounds').on('value', (snapshot) => {
   }
 });
 })();
+if (typeof database !== "undefined") {
+    database.ref('golf_data/rounds').on('value', (snapshot) => {
+        const remoteRounds = snapshot.val();
+        if (remoteRounds) {
+            rounds = remoteRounds;
+            
+            const detailView = document.getElementById('dash-detail');
+            if (detailView && !detailView.classList.contains('hidden')) {
+                if (typeof renderDashboard === "function") renderDashboard();
+                if (typeof updateLiveLeaderboard === 'function') updateLiveLeaderboard();
+            }
+        }
+    });
+}
 </script>
 </body>
 </html>
