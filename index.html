@@ -1276,36 +1276,35 @@ function updateSeasonDropdown() {
         if(tourneySel) tourneySel.innerHTML = seasons.map(s => `<option value="${s}">${s} Season</option>`).join('');
     }
 
-    function renderDashboard() {
-        const s = document.getElementById('dashSeason').value;
-        const comps = rounds.filter(r => r.season === s).reduce((acc, r) => { 
-            const k = `${r.date}|${r.courseId}`; 
-            if (!acc[k]) acc[k] = { date: r.date, course: r.courseName, id: r.courseId, count: 0 }; 
-            acc[k].count++; 
-            return acc; 
-        }, {});
-        document.getElementById('dash-list').innerHTML = Object.values(comps).map(c => `
-            <div class="item-row" onclick="viewDetail('${c.date}','${c.id}')">
-                <span><b>${c.course}</b><br><small>${formatDateDisplay(c.date)}</small></span>
-                <span>${c.count} Players ></span>
-            </div>`).join('');
-    }
+  function renderDashboard() {
+    const s = document.getElementById('dashSeason').value;
+    const comps = rounds.filter(r => r.season === s).reduce((acc, r) => { 
+        const k = `${r.date}|${r.courseId}`; 
+        if (!acc[k]) acc[k] = { date: r.date, course: r.courseName, id: r.courseId, count: 0 }; 
+        acc[k].count++; 
+        return acc; 
+    }, {});
+   
+    document.getElementById('dash-list').innerHTML = Object.values(comps).map(c => `
+        <div class="item-row" onclick="viewDetail('${c.date}','${c.id}')">
+           <span><b>${c.course}</b><br><small>${formatDateDisplay(c.date)}</small></span>
+           <span>${c.count} Players ></span>
+        </div>`).join('');
+}
 
 function viewDetail(date, courseId) {
     // 1. Gather all saved rounds for this course and date
     let filtered = rounds.filter(r => r.date === date && String(r.courseId) === String(courseId));
     
-    // 2. Check if anyone is currently live-typing a round that matches this date/course but isn't saved yet
-    if (window.currentLiveRoundId) {
-        const liveRoundExists = filtered.some(r => String(r.id) === String(window.currentLiveRoundId));
-        if (!liveRoundExists) {
-            // Find the active live round from your global rounds array and make sure it's included
-            const activeLive = rounds.find(r => String(r.id) === String(window.currentLiveRoundId));
-            if (activeLive && activeLive.date === date && String(activeLive.courseId) === String(courseId)) {
-                filtered.push(activeLive);
+    // 2. FIXED LIVE DETECTION: Look through the rounds array for any live strings matching this event
+    rounds.forEach(r => {
+        if (String(r.id).startsWith('live-') && r.date === date && String(r.courseId) === String(courseId)) {
+            // If this live round isn't already inside our filtered view list, add it
+            if (!filtered.some(f => String(f.id) === String(r.id))) {
+                filtered.push(r);
             }
         }
-    }
+    });
 
     // 3. Sort them with highest points at the top, using your standard tie-breakers
     filtered.sort((a, b) => {
@@ -1351,7 +1350,6 @@ function viewDetail(date, courseId) {
         </tr>`;
     }).join('');
 }
-
     function closeDetail() {
         document.getElementById('dash-main-view').classList.remove('hidden');
         document.getElementById('dash-detail').classList.add('hidden');
