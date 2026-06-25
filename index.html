@@ -668,17 +668,17 @@ function loadData() {
     const data = snapshot.val();
     
     if (data) {
-      // If cloud data exists, load it into your arrays instantly
-      players = data.players || [];
-      courses = data.courses || [];
-      rounds = data.rounds || [];
-      pastComps = data.pastComps || [];
-      club = data.club || { name: "Golf Pro Manager", logo: "" };
-      competitionTeams = data.competitionTeams || [];
-      pairsT = data.pairsT || [];
-      singlesT = data.singlesT || [];
+      // FIXED: Only overwrite arrays if they actually exist in the incoming cloud packet!
+      if (data.players) players = data.players;
+      if (data.courses) courses = data.courses;
+      if (data.rounds) rounds = data.rounds;
+      if (data.pastComps) pastComps = data.pastComps;
+      if (data.club) club = data.club;
+      if (data.competitionTeams) competitionTeams = data.competitionTeams;
+      if (data.pairsT) pairsT = data.pairsT;
+      if (data.singlesT) singlesT = data.singlesT;
     } else {
-      // Fallback: If cloud is empty, look for older local phone backups
+      // Fallback: If cloud is completely empty, look for older local phone backups
       players = JSON.parse(localStorage.getItem('g_players')) || [];
       courses = JSON.parse(localStorage.getItem('g_courses')) || [];
       rounds = JSON.parse(localStorage.getItem('g_rounds')) || [];
@@ -722,6 +722,18 @@ function loadData() {
     if (typeof renderRegistry === "function") renderRegistry();
     if (typeof renderStats === "function") renderStats();
     if (typeof renderDashboard === "function") renderDashboard();
+    
+    // FIXED: Force the detailed sub-view leaderboard to refresh automatically if it is open
+    const detailView = document.getElementById('dash-detail');
+    if (detailView && !detailView.classList.contains('hidden')) {
+        // If viewDetail exists, re-run it with its current screen values to instantly draw the changes
+        const activeCourseId = document.getElementById('rCourse')?.value || (rounds[0]?.courseId);
+        const activeDate = document.getElementById('rDate')?.value || (rounds[0]?.date);
+        if (typeof viewDetail === "function" && activeDate && activeCourseId) {
+            viewDetail(activeDate, activeCourseId);
+        }
+    }
+
     if (typeof updateLiveLeaderboard === 'function') {
        updateLiveLeaderboard();
     }
