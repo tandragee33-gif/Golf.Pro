@@ -1276,21 +1276,24 @@ function updateSeasonDropdown() {
         if(tourneySel) tourneySel.innerHTML = seasons.map(s => `<option value="${s}">${s} Season</option>`).join('');
     }
 
-  function renderDashboard() {
-    const s = document.getElementById('dashSeason').value;
-    const comps = rounds.filter(r => r.season === s).reduce((acc, r) => { 
-        const k = `${r.date}|${r.courseId}`; 
-        if (!acc[k]) acc[k] = { date: r.date, course: r.courseName, id: r.courseId, count: 0 }; 
-        acc[k].count++; 
-        return acc; 
-    }, {});
-   
-    document.getElementById('dash-list').innerHTML = Object.values(comps).map(c => `
-        <div class="item-row" onclick="viewDetail('${c.date}','${c.id}')">
-           <span><b>${c.course}</b><br><small>${formatDateDisplay(c.date)}</small></span>
-           <span>${c.count} Players ></span>
-        </div>`).join('');
-}
+// Safely refresh standard registries and live dashboards if they exist
+    if (typeof renderRegistry === "function") renderRegistry();
+    if (typeof renderStats === "function") renderStats();
+    if (typeof renderDashboard === "function") renderDashboard();
+
+    // FIXED: If Device B is currently looking at a live scorecard detail, force it to refresh its table view instantly
+    const detailView = document.getElementById('dash-detail');
+    if (detailView && !detailView.classList.contains('hidden')) {
+        const activeCourseId = document.getElementById('editCourseId')?.value || (rounds[0]?.courseId);
+        const activeDate = document.getElementById('rDate')?.value || (rounds[0]?.date);
+        if (typeof viewDetail === "function" && activeDate && activeCourseId) {
+            viewDetail(activeDate, activeCourseId);
+        }
+    }
+
+    if (typeof updateLiveLeaderboard === 'function') {
+       updateLiveLeaderboard();
+    }
 
 function viewDetail(date, courseId) {
     // 1. Gather all saved rounds for this course and date
