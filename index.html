@@ -1141,6 +1141,36 @@ function calculateLiveStableford() {
 // Put overall total values into the HTML box above the Save button
   document.getElementById('live-total-gross').innerText = totalGross;
   document.getElementById('live-total-points').innerText = totalPoints;
+// Automatically update Firebase while typing so other devices see it live
+const livePlayerSelect = document.getElementById('rPlayer');
+const liveCourseSelect = document.getElementById('rCourse');
+const liveDateInput = document.getElementById('rDate');
+
+if (livePlayerSelect && liveCourseSelect && liveDateInput) {
+    const pId = livePlayerSelect.value;
+    const cId = liveCourseSelect.value;
+    const dVal = liveDateInput.value;
+    
+    if (pId && cId && dVal) {
+        // Find if this round exists in our local array
+        const roundIndex = rounds.findIndex(r => String(r.playerId) === String(pId) && String(r.courseId) === String(cId) && r.date === dVal);
+        if (roundIndex !== -1) {
+            // Update scores and totals for this active round row
+            for (let h = 1; h <= 18; h++) {
+                const inputs = document.querySelectorAll('.round-scores-val');
+                if (inputs && inputs[h - 1]) {
+                    rounds[roundIndex].scores[h] = parseInt(inputs[h - 1].value) || 0;
+                }
+            }
+            rounds[roundIndex].points = totalPoints;
+            
+            // Push the updated array up to Firebase instantly
+            if (typeof database !== 'undefined') {
+                database.ref('golf_data/rounds').set(rounds);
+            }
+        }
+    }
+}
 if (typeof updateLiveLeaderboard === 'function') updateLiveLeaderboard(); 
 
   // Automatically refresh dashboards and live leaderboards on every keypress
