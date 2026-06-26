@@ -1172,6 +1172,42 @@ if (livePlayerSelect && liveCourseSelect && liveDateInput) {
     }
 }
 if (typeof updateLiveLeaderboard === 'function') updateLiveLeaderboard(); 
+// --- LIVE CLOUD SYNC: Send live typing entry to Firebase instantly ---
+const cloudCourseId = document.getElementById('rCourse') ? document.getElementById('rCourse').value : '';
+const cloudPlayerId = document.getElementById('rPlayer') ? document.getElementById('rPlayer').value : '';
+const cloudDateInput = document.getElementById('rDate') ? document.getElementById('rDate').value : '';
+
+if (cloudCourseId && cloudPlayerId && cloudDateInput && typeof database !== 'undefined') {
+    // 1. Gather all 18 input box values right now
+    const typedScores = {};
+    const scoreInputs = document.querySelectorAll('.round-scores-val');
+    for (let h = 1; h <= 18; h++) {
+        if (scoreInputs && scoreInputs[h - 1]) {
+            typedScores[h] = parseInt(scoreInputs[h - 1].value) || 0;
+        } else {
+            typedScores[h] = 0;
+        }
+    }
+    
+    // 2. Fetch object names for reference
+    const courseObj = courses.find(c => String(c.id) === String(cloudCourseId));
+    const playerObj = players.find(p => String(p.id) === String(cloudPlayerId));
+    
+    // 3. Create a unique live tracking path for this player in Firebase
+    const livePath = `golf_data/live_sessions/${cloudPlayerId}`;
+    
+    database.ref(livePath).set({
+        playerId: cloudPlayerId,
+        playerName: playerObj ? playerObj.name : 'Player',
+        courseId: cloudCourseId,
+        courseName: courseObj ? courseObj.name : 'Course',
+        date: cloudDateInput,
+        scores: typedScores,
+        totalGross: totalGross,
+        points: totalPoints,
+        timestamp: Date.now()
+    });
+}
 
   // Automatically refresh dashboards and live leaderboards on every keypress
   if (typeof renderDashboard === 'function') renderDashboard();
@@ -1642,6 +1678,9 @@ function saveRound() {
 
     // 1. Save data locally and to Firebase Cloud immediately
     saveData();
+if (typeof database !== 'undefined' && document.getElementById('rPlayer') && document.getElementById('rPlayer').value) {
+    database.ref(`golf_data/live_sessions/${document.getElementById('rPlayer').value}`).remove();
+}
 
     // 2. Refresh screens locally
     renderStats();  
@@ -1692,37 +1731,76 @@ function saveRound() {
 
     function deleteRound(id) { if(confirm("Delete?")) { rounds = rounds.filter(x => String(x.id) !== String(id)); saveData(); renderStats(); renderDashboard(); } }
 
-function resetRoundForm() {
-    // --- STEP 3 FIXED: Clear the live typing tracker ---
-    window.currentLiveRoundId = null; 
+function calculateLiveStableford() {
+  const courseId = document.getElementById('rCourse').value;
+  const playerId = document.getElementById('rPlayer').value;
+  const scoreInputs = document.querySelectorAll('.round-scores-val');
+  const pointLabels = document.querySelectorAll('.live-hole-pts');
 
-    // This clears the live scores and points displays when starting over
-    if (document.getElementById('editRoundId')) {
-        document.getElementById('editRoundId').value = '';
-    }
-    
-    if (document.getElementById('live-total-gross')) {
-        document.getElementById('live-total-gross').innerText = '0';
-        document.getElementById('live-total-points').innerText = '0';
-        document.querySelectorAll('.live-hole-pts').forEach(lbl => lbl.innerText = '0');
+  let totalGross = 0;
+  let totalPoints = 0;
+
+  const course = courses.find(c => c.id == courseId);
+  const player = players.find(p => p.id == playerId);
+
+  const pars = course ? course.pars || [] : [];
+  const siArray = course ? course.si || [] : [];
+  const playerHandicap = player ? parseFloat(player.handicap) || player.hc || 0 : 0;
+
+  scoreInputs.forEach((input, i) => {
+    const gross = parseInt(input.value) || 0;
+    let holePoints = 0;
+
+    if (gross > 0) {
+      totalGross += gross;
+
+      if (pars[i] && siArray[i]) {
+        const par = parseInt(pars[i]);
+        const si = parseInt(siArray[i]);
+
+        let extraStrokes = Math.floor(playerHandicap / 18);
+        if (playerHandicap % 18 >= si) {
+          extraStrokes += 1;
+        }
+
+        const netScore = gross - extraStrokes;
+        holePoints = par - netScore + 2;
+        if (holePoints < 0) holePoints = 0;
+      }
     }
 
-    document.querySelectorAll('.round-scores-val').forEach(i => {
-        i.value = '';
-        i.style.color = '#333';
+    pointLabels[i].innerText = holePoints;
+    totalPoints += holePoints;
+  });
+
+  document.getElementById('live-total-gross').innerText = totalGross;
+  document.getElementById('live-total-points').innerText = totalPoints;
+
+  // --- LIVE CLOUD SYNC ---
+  const cloudDateInput = document.getElementById('rDate') ? document.getElementById('rDate').value : '';
+
+  if (courseId && playerId && cloudDateInput && typeof database !== 'undefined') {
+    const typedScores = {};
+    scoreInputs.forEach((input, i) => {
+        typedScores[i + 1] = parseInt(input.value) || 0;
     });
 
-    if (document.getElementById('rLongDrive')) document.getElementById('rLongDrive').value = 'No';
-    if (document.getElementById('rNearPin')) document.getElementById('rNearPin').value = 'No';
-    
-    const now = new Date();
-    const dateInput = document.getElementById('rDate');
-    if (dateInput) {
-        dateInput.value = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`;
-    }
-    
-    if (typeof populateRoundSelectors === "function") populateRoundSelectors();
-    document.querySelectorAll('.round-scores-val')[0]?.focus();
+    const livePath = `golf_data/live_sessions/${playerId}`;
+    database.ref(livePath).set({
+        playerId: playerId,
+        playerName: player ? player.name : 'Player',
+        courseId: courseId,
+        courseName: course ? course.name : 'Course',
+        date: cloudDateInput,
+        scores: typedScores,
+        totalGross: totalGross,
+        points: totalPoints,
+        timestamp: Date.now()
+    });
+  }
+
+  if (typeof renderDashboard === 'function') renderDashboard();
+  if (typeof updateLiveLeaderboard === 'function') updateLiveLeaderboard();
 }
 
     function savePlayer() {
@@ -2277,6 +2355,29 @@ database.ref('golf_data/rounds').on('value', (snapshot) => {
   }
 });
 })();
+// Listen to live typing entries across devices and force-refresh the leaderboard
+if (typeof database !== 'undefined') {
+    database.ref('golf_data/live_sessions').on('value', (snapshot) => {
+        const liveSessions = snapshot.val();
+        if (liveSessions) {
+            // Merge active typing entries temporarily into our local leaderboard view array
+            Object.keys(liveSessions).forEach(pId => {
+                const session = liveSessions[pId];
+                // Check if this live player/date is already saved. If not, add or update it in local memory
+                const matchIndex = rounds.findIndex(r => String(r.playerId) === String(session.playerId) && r.date === session.date);
+                if (matchIndex !== -1) {
+                    rounds[matchIndex].points = session.points;
+                    rounds[matchIndex].totalGross = session.totalGross;
+                    rounds[matchIndex].scores = session.scores;
+                } else {
+                    // Temporarily inject the live typed round so it draws on the board
+                    rounds.push(session);
+                }
+            });
+        }
+        if (typeof updateLiveLeaderboard === 'function') updateLiveLeaderboard();
+    });
+}
 if (typeof database !== "undefined") {
     database.ref('golf_data/rounds').on('value', (snapshot) => {
         const remoteRounds = snapshot.val();
