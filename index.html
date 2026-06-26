@@ -562,26 +562,24 @@ function updateLiveLeaderboard() {
   const livePoints = parseInt(livePointsText) || 0;
   const liveGross = parseInt(liveGrossText) || 0;
 
-  // 3. Blend in ALL remote live sessions (NO date restriction so they never disappear or flash!)
+  // 3. Blend in remote live sessions from other players typing right now
   if (window.liveScoresCache) {
     Object.keys(window.liveScoresCache).forEach(pId => {
       const session = window.liveScoresCache[pId];
-      
-      // Always remove any old historical saved row for this player to prevent duplicates
-      activeRounds = activeRounds.filter(r => String(r.playerId) !== String(session.playerId));
-      
-      activeRounds.push({
-        playerId: session.playerId,
-        playerName: session.playerName,
-        courseName: session.courseName,
-        totalGross: session.totalGross,
-        points: session.points,
-        isLive: true
-      });
+      // Filter by date match or always show if it's an active live entry
+      if (session.date === currentDateInput || !currentDateInput) {
+        activeRounds = activeRounds.filter(r => String(r.playerId) !== String(session.playerId));
+        activeRounds.push({
+          playerName: session.playerName,
+          courseName: session.courseName,
+          totalGross: session.totalGross,
+          points: session.points,
+          isLive: true
+        });
+      }
     });
   }
 
-  // 4. Force inject our local entry if we are typing right now
   if (liveCourseId && livePlayerId && (liveGross > 0 || livePoints > 0)) {
     const courseObj = courses.find(c => String(c.id) === String(liveCourseId));
     const playerObj = players.find(p => String(p.id) === String(livePlayerId));
@@ -589,7 +587,6 @@ function updateLiveLeaderboard() {
     activeRounds = activeRounds.filter(r => String(r.playerId) !== String(livePlayerId));
 
     activeRounds.push({
-      playerId: livePlayerId,
       playerName: playerObj ? playerObj.name : 'Player',
       courseName: courseObj ? courseObj.name : 'Course',
       totalGross: liveGross,
@@ -603,10 +600,10 @@ function updateLiveLeaderboard() {
     return;
   }
 
-  // 5. Sort by highest points
+  // 4. Sort by highest points
   activeRounds.sort((a, b) => b.points - a.points);
 
-  // 6. Output the updated table rows smoothly
+  // 5. Output the updated table rows smoothly
   tbody.innerHTML = activeRounds.map((r, index) => {
     return `
     <tr style="${r.isLive ? 'background: #fffde7; font-style: italic;' : ''}">
@@ -2423,50 +2420,21 @@ database.ref('golf_data/rounds').on('value', (snapshot) => {
   const cloudRounds = snapshot.val();
   if (cloudRounds) {
     rounds = cloudRounds || [];
-    
-    // Smoothly blend any active live typing scores right here too
-    let blended = [...rounds];
-    if (window.liveScoresCache) {
-        Object.keys(window.liveScoresCache).forEach(pId => {
-            const session = window.liveScoresCache[pId];
-            const idx = blended.findIndex(r => String(r.playerId) === String(session.playerId) && r.date === session.date);
-            if (idx !== -1) blended[idx] = { ...blended[idx], ...session };
-            else blended.push(session);
-        });
+    if (typeof updateLiveLeaderboard === 'function') {
+      updateLiveLeaderboard(); 
     }
-    
-    const originalRounds = rounds;
-    rounds = blended;
-    if (typeof updateLiveLeaderboard === 'function') updateLiveLeaderboard(); 
-    rounds = originalRounds;
-
     if (typeof renderStats === "function") renderStats();
     if (typeof renderDashboard === "function") renderDashboard();
   }
 });
 })();
 
-// Listen to live typing entries across devices and blend them smoothly without flashing
+// Listen to live typing entries across devices and update safely with ZERO flashing
 window.liveScoresCache = {};
 if (typeof database !== 'undefined') {
     database.ref('golf_data/live_sessions').on('value', (snapshot) => {
         window.liveScoresCache = snapshot.val() || {};
-        
-        let blendedRounds = [...rounds];
-        Object.keys(window.liveScoresCache).forEach(pId => {
-            const session = window.liveScoresCache[pId];
-            const matchIndex = blendedRounds.findIndex(r => String(r.playerId) === String(session.playerId) && r.date === session.date);
-            if (matchIndex !== -1) {
-                blendedRounds[matchIndex] = { ...blendedRounds[matchIndex], ...session };
-            } else {
-                blendedRounds.push(session);
-            }
-        });
-        
-        const originalRounds = rounds;
-        rounds = blendedRounds;
         if (typeof updateLiveLeaderboard === 'function') updateLiveLeaderboard();
-        rounds = originalRounds;
     });
 }
 
@@ -2475,24 +2443,10 @@ if (typeof database !== "undefined") {
         const remoteRounds = snapshot.val();
         if (remoteRounds) {
             rounds = remoteRounds || [];
-            
-            let blended = [...rounds];
-            if (window.liveScoresCache) {
-                Object.keys(window.liveScoresCache).forEach(pId => {
-                    const session = window.liveScoresCache[pId];
-                    const idx = blended.findIndex(r => String(r.playerId) === String(session.playerId) && r.date === session.date);
-                    if (idx !== -1) blended[idx] = { ...blended[idx], ...session };
-                    else blended.push(session);
-                });
-            }
-
             const detailView = document.getElementById('dash-detail');
             if (detailView && !detailView.classList.contains('hidden')) {
-                const originalRounds = rounds;
-                rounds = blended;
                 if (typeof renderDashboard === "function") renderDashboard();
                 if (typeof updateLiveLeaderboard === 'function') updateLiveLeaderboard();
-                rounds = originalRounds;
             }
         }
     });
