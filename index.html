@@ -2346,48 +2346,77 @@ function renderSavedDoubles() {
 database.ref('golf_data/rounds').on('value', (snapshot) => {
   const cloudRounds = snapshot.val();
   if (cloudRounds) {
-    rounds = cloudRounds;
-    if (typeof updateLiveLeaderboard === 'function') {
-      updateLiveLeaderboard(); 
+    rounds = cloudRounds || [];
+    
+    // Smoothly blend any active live typing scores right here too
+    let blended = [...rounds];
+    if (window.liveScoresCache) {
+        Object.keys(window.liveScoresCache).forEach(pId => {
+            const session = window.liveScoresCache[pId];
+            const idx = blended.findIndex(r => String(r.playerId) === String(session.playerId) && r.date === session.date);
+            if (idx !== -1) blended[idx] = { ...blended[idx], ...session };
+            else blended.push(session);
+        });
     }
+    
+    const originalRounds = rounds;
+    rounds = blended;
+    if (typeof updateLiveLeaderboard === 'function') updateLiveLeaderboard(); 
+    rounds = originalRounds;
+
     if (typeof renderStats === "function") renderStats();
     if (typeof renderDashboard === "function") renderDashboard();
   }
 });
 })();
-// Listen to live typing entries across devices and force-refresh the leaderboard
+
+// Listen to live typing entries across devices and blend them smoothly without flashing
+window.liveScoresCache = {};
 if (typeof database !== 'undefined') {
     database.ref('golf_data/live_sessions').on('value', (snapshot) => {
-        const liveSessions = snapshot.val();
-        if (liveSessions) {
-            // Merge active typing entries temporarily into our local leaderboard view array
-            Object.keys(liveSessions).forEach(pId => {
-                const session = liveSessions[pId];
-                // Check if this live player/date is already saved. If not, add or update it in local memory
-                const matchIndex = rounds.findIndex(r => String(r.playerId) === String(session.playerId) && r.date === session.date);
-                if (matchIndex !== -1) {
-                    rounds[matchIndex].points = session.points;
-                    rounds[matchIndex].totalGross = session.totalGross;
-                    rounds[matchIndex].scores = session.scores;
-                } else {
-                    // Temporarily inject the live typed round so it draws on the board
-                    rounds.push(session);
-                }
-            });
-        }
+        window.liveScoresCache = snapshot.val() || {};
+        
+        let blendedRounds = [...rounds];
+        Object.keys(window.liveScoresCache).forEach(pId => {
+            const session = window.liveScoresCache[pId];
+            const matchIndex = blendedRounds.findIndex(r => String(r.playerId) === String(session.playerId) && r.date === session.date);
+            if (matchIndex !== -1) {
+                blendedRounds[matchIndex] = { ...blendedRounds[matchIndex], ...session };
+            } else {
+                blendedRounds.push(session);
+            }
+        });
+        
+        const originalRounds = rounds;
+        rounds = blendedRounds;
         if (typeof updateLiveLeaderboard === 'function') updateLiveLeaderboard();
+        rounds = originalRounds;
     });
 }
+
 if (typeof database !== "undefined") {
-    database.ref('golf_data/rounds').on('value', (snapshot) => {
+   database.ref('golf_data/rounds').on('value', (snapshot) => {
         const remoteRounds = snapshot.val();
         if (remoteRounds) {
-            rounds = remoteRounds;
+            rounds = remoteRounds || [];
             
+            let blended = [...rounds];
+            if (window.liveScoresCache) {
+                Object.keys(window.liveScoresCache).forEach(pId => {
+                    const session = window.liveScoresCache[pId];
+                    const idx = blended.findIndex(r => String(r.playerId) === String(session.playerId) && r.date === session.date);
+                    if (idx !== -1) blended[idx] = { ...blended[idx], ...session };
+                    else blended.push(session);
+                });
+            }
+
             const detailView = document.getElementById('dash-detail');
             if (detailView && !detailView.classList.contains('hidden')) {
+                const originalRounds = rounds;
+                rounds = blended;
                 if (typeof renderDashboard === "function") renderDashboard();
                 if (typeof updateLiveLeaderboard === 'function') updateLiveLeaderboard();
+                rounds = originalRounds;
             }
         }
     });
