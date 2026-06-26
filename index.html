@@ -2419,7 +2419,7 @@ function renderSavedDoubles() {
 database.ref('golf_data/rounds').on('value', (snapshot) => {
   const cloudRounds = snapshot.val();
   if (cloudRounds) {
-    rounds = cloudRounds || [];
+    rounds = cloudRounds;
     if (typeof updateLiveLeaderboard === 'function') {
       updateLiveLeaderboard(); 
     }
@@ -2429,12 +2429,42 @@ database.ref('golf_data/rounds').on('value', (snapshot) => {
 });
 })();
 
-// Listen to live typing entries across devices and update safely with ZERO flashing
+// --- SAFE SEPARATE LIVE TRACKING OVERLAY (Outside the wrapper) ---
 window.liveScoresCache = {};
+
 if (typeof database !== 'undefined') {
+    // 1. Listen for other devices typing live
     database.ref('golf_data/live_sessions').on('value', (snapshot) => {
         window.liveScoresCache = snapshot.val() || {};
         if (typeof updateLiveLeaderboard === 'function') updateLiveLeaderboard();
+    });
+
+    // 2. Feed local typing directly to the cloud safely
+    document.addEventListener('input', (e) => {
+        if (e.target && e.target.classList.contains('round-scores-val')) {
+            const pSelect = document.getElementById('rPlayer');
+            const cSelect = document.getElementById('rCourse');
+            const dInput = document.getElementById('rDate');
+            const pPoints = document.getElementById('live-total-points');
+            const pGross = document.getElementById('live-total-gross');
+
+            if (pSelect && cSelect && dInput && pSelect.value && cSelect.value) {
+                const livePath = `golf_data/live_sessions/${pSelect.value}`;
+                const pName = pSelect.options[pSelect.selectedIndex] ? pSelect.options[pSelect.selectedIndex].text : 'Player';
+                const cName = cSelect.options[cSelect.selectedIndex] ? cSelect.options[cSelect.selectedIndex].text : 'Course';
+
+                database.ref(livePath).set({
+                    playerId: pSelect.value,
+                    playerName: pName.split('(')[0].trim(),
+                    courseId: cSelect.value,
+                    courseName: cName,
+                    date: dInput.value,
+                    totalGross: pGross ? (parseInt(pGross.innerText) || 0) : 0,
+                    points: pPoints ? (parseInt(pPoints.innerText) || 0) : 0,
+                    timestamp: Date.now()
+                });
+            }
+        }
     });
 }
 
@@ -2442,7 +2472,8 @@ if (typeof database !== "undefined") {
    database.ref('golf_data/rounds').on('value', (snapshot) => {
         const remoteRounds = snapshot.val();
         if (remoteRounds) {
-            rounds = remoteRounds || [];
+            rounds = remoteRounds;
+            
             const detailView = document.getElementById('dash-detail');
             if (detailView && !detailView.classList.contains('hidden')) {
                 if (typeof renderDashboard === "function") renderDashboard();
