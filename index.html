@@ -490,7 +490,7 @@ function updateLiveLeaderboard() {
     return r.date === currentDateInput || (typeof formatDateDisplay === 'function' && formatDateDisplay(r.date) === currentDateInput);
   });
 
-  // 2. Safely grab what's currently being typed LOCALLY on this screen right now
+  // 2. Safely grab what's currently being typed on the screen right now
   const liveCourseId = document.getElementById('rCourse') ? document.getElementById('rCourse').value : '';
   const livePlayerId = document.getElementById('rPlayer') ? document.getElementById('rPlayer').value : '';
   const livePointsText = document.getElementById('live-total-points') ? document.getElementById('live-total-points').innerText : '0';
@@ -499,93 +499,14 @@ function updateLiveLeaderboard() {
   const livePoints = parseInt(livePointsText) || 0;
   const liveGross = parseInt(liveGrossText) || 0;
 
-  // 3. Blend in ALL remote live sessions from other players typing on other devices
-  if (window.liveScoresCache) {
-    Object.keys(window.liveScoresCache).forEach(pId => {
-      const session = window.liveScoresCache[pId];
-      // Only show live sessions matching our active leaderboard date filter
-      if (session.date === currentDateInput || !currentDateInput) {
-        // Remove old historical saved entry for this player to prevent duplicates
-        activeRounds = activeRounds.filter(r => String(r.playerId) !== String(session.playerId));
-        
-        activeRounds.push({
-          playerId: session.playerId,
-          playerName: session.playerName,
-          courseName: session.courseName,
-          totalGross: session.totalGross,
-          points: session.points,
-          isLive: true
-        });
-      }
-    });
-  }
-
-  // 4. Force inject our local entry if we are typing right now (ensures local changes show immediately)
   if (liveCourseId && livePlayerId && (liveGross > 0 || livePoints > 0)) {
     const courseObj = courses.find(c => String(c.id) === String(liveCourseId));
     const playerObj = players.find(p => String(p.id) === String(livePlayerId));
     
+    // Remove old saved entry for this specific player to prevent duplicate lines on screen
     activeRounds = activeRounds.filter(r => String(r.playerId) !== String(livePlayerId));
 
-    activeRounds.push({
-      playerId: livePlayerId,
-      playerName: playerObj ? playerObj.name : 'Player',
-      courseName: courseObj ? courseObj.name : 'Course',
-      totalGross: liveGross,
-      points: livePoints,
-      isLive: true
-    });
-  }
-
-  if (activeRounds.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:#888;">No saved entries recorded yet.</td></tr>`;function updateLiveLeaderboard() {
-  const tbody = document.getElementById('live-leaderboard-body');
-  if (!tbody) return;
-
-  let currentDateInput = document.getElementById('rDate') ? document.getElementById('rDate').value : '';
-  if (!currentDateInput && rounds.length > 0) {
-    const sortedRounds = [...rounds].sort((a, b) => new Date(b.date) - new Date(a.date));
-    currentDateInput = sortedRounds[0].date;
-  }
-
-  // 1. Get already saved rounds for today
-  let activeRounds = rounds.filter(r => {
-    return r.date === currentDateInput || (typeof formatDateDisplay === 'function' && formatDateDisplay(r.date) === currentDateInput);
-  });
-
-  // 2. Safely grab what's currently being typed LOCALLY on this screen right now
-  const liveCourseId = document.getElementById('rCourse') ? document.getElementById('rCourse').value : '';
-  const livePlayerId = document.getElementById('rPlayer') ? document.getElementById('rPlayer').value : '';
-  const livePointsText = document.getElementById('live-total-points') ? document.getElementById('live-total-points').innerText : '0';
-  const liveGrossText = document.getElementById('live-total-gross') ? document.getElementById('live-total-gross').innerText : '0';
-  
-  const livePoints = parseInt(livePointsText) || 0;
-  const liveGross = parseInt(liveGrossText) || 0;
-
-  // 3. Blend in remote live sessions from other players typing right now
-  if (window.liveScoresCache) {
-    Object.keys(window.liveScoresCache).forEach(pId => {
-      const session = window.liveScoresCache[pId];
-      // Filter by date match or always show if it's an active live entry
-      if (session.date === currentDateInput || !currentDateInput) {
-        activeRounds = activeRounds.filter(r => String(r.playerId) !== String(session.playerId));
-        activeRounds.push({
-          playerName: session.playerName,
-          courseName: session.courseName,
-          totalGross: session.totalGross,
-          points: session.points,
-          isLive: true
-        });
-      }
-    });
-  }
-
-  if (liveCourseId && livePlayerId && (liveGross > 0 || livePoints > 0)) {
-    const courseObj = courses.find(c => String(c.id) === String(liveCourseId));
-    const playerObj = players.find(p => String(p.id) === String(livePlayerId));
-    
-    activeRounds = activeRounds.filter(r => String(r.playerId) !== String(livePlayerId));
-
+    // Inject their active live session into the display pool
     activeRounds.push({
       playerName: playerObj ? playerObj.name : 'Player',
       courseName: courseObj ? courseObj.name : 'Course',
@@ -600,10 +521,10 @@ function updateLiveLeaderboard() {
     return;
   }
 
-  // 4. Sort by highest points
+  // 3. Sort by highest points
   activeRounds.sort((a, b) => b.points - a.points);
 
-  // 5. Output the updated table rows smoothly
+  // 4. Output the updated table rows smoothly
   tbody.innerHTML = activeRounds.map((r, index) => {
     return `
     <tr style="${r.isLive ? 'background: #fffde7; font-style: italic;' : ''}">
@@ -615,6 +536,12 @@ function updateLiveLeaderboard() {
     </tr>
     `;
   }).join('');
+}
+// PUT THIS AT THE TOP OF THE FIRST SCRIPT TAG
+function getScoreColor(pts) {
+    if (pts >= 3) return '#27ae60'; // Green (Great)
+    if (pts === 2) return '#2980b9'; // Blue (Good)
+    return '#333';                   // Black (Standard)
 }
 function colorLive(input) {
     // 1. Maintain your original text color-changing rules
@@ -1245,42 +1172,6 @@ if (livePlayerSelect && liveCourseSelect && liveDateInput) {
     }
 }
 if (typeof updateLiveLeaderboard === 'function') updateLiveLeaderboard(); 
-// --- LIVE CLOUD SYNC: Send live typing entry to Firebase instantly ---
-const cloudCourseId = document.getElementById('rCourse') ? document.getElementById('rCourse').value : '';
-const cloudPlayerId = document.getElementById('rPlayer') ? document.getElementById('rPlayer').value : '';
-const cloudDateInput = document.getElementById('rDate') ? document.getElementById('rDate').value : '';
-
-if (cloudCourseId && cloudPlayerId && cloudDateInput && typeof database !== 'undefined') {
-    // 1. Gather all 18 input box values right now
-    const typedScores = {};
-    const scoreInputs = document.querySelectorAll('.round-scores-val');
-    for (let h = 1; h <= 18; h++) {
-        if (scoreInputs && scoreInputs[h - 1]) {
-            typedScores[h] = parseInt(scoreInputs[h - 1].value) || 0;
-        } else {
-            typedScores[h] = 0;
-        }
-    }
-    
-    // 2. Fetch object names for reference
-    const courseObj = courses.find(c => String(c.id) === String(cloudCourseId));
-    const playerObj = players.find(p => String(p.id) === String(cloudPlayerId));
-    
-    // 3. Create a unique live tracking path for this player in Firebase
-    const livePath = `golf_data/live_sessions/${cloudPlayerId}`;
-    
-    database.ref(livePath).set({
-        playerId: cloudPlayerId,
-        playerName: playerObj ? playerObj.name : 'Player',
-        courseId: cloudCourseId,
-        courseName: courseObj ? courseObj.name : 'Course',
-        date: cloudDateInput,
-        scores: typedScores,
-        totalGross: totalGross,
-        points: totalPoints,
-        timestamp: Date.now()
-    });
-}
 
   // Automatically refresh dashboards and live leaderboards on every keypress
   if (typeof renderDashboard === 'function') renderDashboard();
@@ -1751,9 +1642,6 @@ function saveRound() {
 
     // 1. Save data locally and to Firebase Cloud immediately
     saveData();
-if (typeof database !== 'undefined' && document.getElementById('rPlayer') && document.getElementById('rPlayer').value) {
-    database.ref(`golf_data/live_sessions/${document.getElementById('rPlayer').value}`).remove();
-}
 
     // 2. Refresh screens locally
     renderStats();  
@@ -1804,76 +1692,37 @@ if (typeof database !== 'undefined' && document.getElementById('rPlayer') && doc
 
     function deleteRound(id) { if(confirm("Delete?")) { rounds = rounds.filter(x => String(x.id) !== String(id)); saveData(); renderStats(); renderDashboard(); } }
 
-function calculateLiveStableford() {
-  const courseId = document.getElementById('rCourse').value;
-  const playerId = document.getElementById('rPlayer').value;
-  const scoreInputs = document.querySelectorAll('.round-scores-val');
-  const pointLabels = document.querySelectorAll('.live-hole-pts');
+function resetRoundForm() {
+    // --- STEP 3 FIXED: Clear the live typing tracker ---
+    window.currentLiveRoundId = null; 
 
-  let totalGross = 0;
-  let totalPoints = 0;
-
-  const course = courses.find(c => c.id == courseId);
-  const player = players.find(p => p.id == playerId);
-
-  const pars = course ? course.pars || [] : [];
-  const siArray = course ? course.si || [] : [];
-  const playerHandicap = player ? parseFloat(player.handicap) || player.hc || 0 : 0;
-
-  scoreInputs.forEach((input, i) => {
-    const gross = parseInt(input.value) || 0;
-    let holePoints = 0;
-
-    if (gross > 0) {
-      totalGross += gross;
-
-      if (pars[i] && siArray[i]) {
-        const par = parseInt(pars[i]);
-        const si = parseInt(siArray[i]);
-
-        let extraStrokes = Math.floor(playerHandicap / 18);
-        if (playerHandicap % 18 >= si) {
-          extraStrokes += 1;
-        }
-
-        const netScore = gross - extraStrokes;
-        holePoints = par - netScore + 2;
-        if (holePoints < 0) holePoints = 0;
-      }
+    // This clears the live scores and points displays when starting over
+    if (document.getElementById('editRoundId')) {
+        document.getElementById('editRoundId').value = '';
+    }
+    
+    if (document.getElementById('live-total-gross')) {
+        document.getElementById('live-total-gross').innerText = '0';
+        document.getElementById('live-total-points').innerText = '0';
+        document.querySelectorAll('.live-hole-pts').forEach(lbl => lbl.innerText = '0');
     }
 
-    pointLabels[i].innerText = holePoints;
-    totalPoints += holePoints;
-  });
-
-  document.getElementById('live-total-gross').innerText = totalGross;
-  document.getElementById('live-total-points').innerText = totalPoints;
-
-  // --- LIVE CLOUD SYNC ---
-  const cloudDateInput = document.getElementById('rDate') ? document.getElementById('rDate').value : '';
-
-  if (courseId && playerId && cloudDateInput && typeof database !== 'undefined') {
-    const typedScores = {};
-    scoreInputs.forEach((input, i) => {
-        typedScores[i + 1] = parseInt(input.value) || 0;
+    document.querySelectorAll('.round-scores-val').forEach(i => {
+        i.value = '';
+        i.style.color = '#333';
     });
 
-    const livePath = `golf_data/live_sessions/${playerId}`;
-    database.ref(livePath).set({
-        playerId: playerId,
-        playerName: player ? player.name : 'Player',
-        courseId: courseId,
-        courseName: course ? course.name : 'Course',
-        date: cloudDateInput,
-        scores: typedScores,
-        totalGross: totalGross,
-        points: totalPoints,
-        timestamp: Date.now()
-    });
-  }
-
-  if (typeof renderDashboard === 'function') renderDashboard();
-  if (typeof updateLiveLeaderboard === 'function') updateLiveLeaderboard();
+    if (document.getElementById('rLongDrive')) document.getElementById('rLongDrive').value = 'No';
+    if (document.getElementById('rNearPin')) document.getElementById('rNearPin').value = 'No';
+    
+    const now = new Date();
+    const dateInput = document.getElementById('rDate');
+    if (dateInput) {
+        dateInput.value = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`;
+    }
+    
+    if (typeof populateRoundSelectors === "function") populateRoundSelectors();
+    document.querySelectorAll('.round-scores-val')[0]?.focus();
 }
 
     function savePlayer() {
@@ -2428,48 +2277,8 @@ database.ref('golf_data/rounds').on('value', (snapshot) => {
   }
 });
 })();
-
-// --- SAFE SEPARATE LIVE TRACKING OVERLAY (Outside the wrapper) ---
-window.liveScoresCache = {};
-
-if (typeof database !== 'undefined') {
-    // 1. Listen for other devices typing live
-    database.ref('golf_data/live_sessions').on('value', (snapshot) => {
-        window.liveScoresCache = snapshot.val() || {};
-        if (typeof updateLiveLeaderboard === 'function') updateLiveLeaderboard();
-    });
-
-    // 2. Feed local typing directly to the cloud safely
-    document.addEventListener('input', (e) => {
-        if (e.target && e.target.classList.contains('round-scores-val')) {
-            const pSelect = document.getElementById('rPlayer');
-            const cSelect = document.getElementById('rCourse');
-            const dInput = document.getElementById('rDate');
-            const pPoints = document.getElementById('live-total-points');
-            const pGross = document.getElementById('live-total-gross');
-
-            if (pSelect && cSelect && dInput && pSelect.value && cSelect.value) {
-                const livePath = `golf_data/live_sessions/${pSelect.value}`;
-                const pName = pSelect.options[pSelect.selectedIndex] ? pSelect.options[pSelect.selectedIndex].text : 'Player';
-                const cName = cSelect.options[cSelect.selectedIndex] ? cSelect.options[cSelect.selectedIndex].text : 'Course';
-
-                database.ref(livePath).set({
-                    playerId: pSelect.value,
-                    playerName: pName.split('(')[0].trim(),
-                    courseId: cSelect.value,
-                    courseName: cName,
-                    date: dInput.value,
-                    totalGross: pGross ? (parseInt(pGross.innerText) || 0) : 0,
-                    points: pPoints ? (parseInt(pPoints.innerText) || 0) : 0,
-                    timestamp: Date.now()
-                });
-            }
-        }
-    });
-}
-
 if (typeof database !== "undefined") {
-   database.ref('golf_data/rounds').on('value', (snapshot) => {
+    database.ref('golf_data/rounds').on('value', (snapshot) => {
         const remoteRounds = snapshot.val();
         if (remoteRounds) {
             rounds = remoteRounds;
