@@ -1141,6 +1141,7 @@ function calculateLiveStableford() {
 // Put overall total values into the HTML box above the Save button
   document.getElementById('live-total-gross').innerText = totalGross;
   document.getElementById('live-total-points').innerText = totalPoints;
+if (typeof updateLiveLeaderboard === 'function') updateLiveLeaderboard(); 
 
   // Automatically refresh dashboards and live leaderboards on every keypress
   if (typeof renderDashboard === 'function') renderDashboard();
