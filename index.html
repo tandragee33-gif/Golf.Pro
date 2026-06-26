@@ -490,7 +490,7 @@ function updateLiveLeaderboard() {
     return r.date === currentDateInput || (typeof formatDateDisplay === 'function' && formatDateDisplay(r.date) === currentDateInput);
   });
 
-  // 2. Safely grab what's currently being typed on the screen right now
+  // 2. Safely grab what's currently being typed LOCALLY on this screen right now
   const liveCourseId = document.getElementById('rCourse') ? document.getElementById('rCourse').value : '';
   const livePlayerId = document.getElementById('rPlayer') ? document.getElementById('rPlayer').value : '';
   const livePointsText = document.getElementById('live-total-points') ? document.getElementById('live-total-points').innerText : '0';
@@ -499,15 +499,36 @@ function updateLiveLeaderboard() {
   const livePoints = parseInt(livePointsText) || 0;
   const liveGross = parseInt(liveGrossText) || 0;
 
+  // 3. Blend in ALL remote live sessions from other players typing on other devices
+  if (window.liveScoresCache) {
+    Object.keys(window.liveScoresCache).forEach(pId => {
+      const session = window.liveScoresCache[pId];
+      // Only show live sessions matching our active leaderboard date filter
+      if (session.date === currentDateInput || !currentDateInput) {
+        // Remove old historical saved entry for this player to prevent duplicates
+        activeRounds = activeRounds.filter(r => String(r.playerId) !== String(session.playerId));
+        
+        activeRounds.push({
+          playerId: session.playerId,
+          playerName: session.playerName,
+          courseName: session.courseName,
+          totalGross: session.totalGross,
+          points: session.points,
+          isLive: true
+        });
+      }
+    });
+  }
+
+  // 4. Force inject our local entry if we are typing right now (ensures local changes show immediately)
   if (liveCourseId && livePlayerId && (liveGross > 0 || livePoints > 0)) {
     const courseObj = courses.find(c => String(c.id) === String(liveCourseId));
     const playerObj = players.find(p => String(p.id) === String(livePlayerId));
     
-    // Remove old saved entry for this specific player to prevent duplicate lines on screen
     activeRounds = activeRounds.filter(r => String(r.playerId) !== String(livePlayerId));
 
-    // Inject their active live session into the display pool
     activeRounds.push({
+      playerId: livePlayerId,
       playerName: playerObj ? playerObj.name : 'Player',
       courseName: courseObj ? courseObj.name : 'Course',
       totalGross: liveGross,
@@ -521,10 +542,10 @@ function updateLiveLeaderboard() {
     return;
   }
 
-  // 3. Sort by highest points
+  // 5. Sort by highest points
   activeRounds.sort((a, b) => b.points - a.points);
 
-  // 4. Output the updated table rows smoothly
+  // 6. Output the updated table rows smoothly
   tbody.innerHTML = activeRounds.map((r, index) => {
     return `
     <tr style="${r.isLive ? 'background: #fffde7; font-style: italic;' : ''}">
@@ -536,12 +557,6 @@ function updateLiveLeaderboard() {
     </tr>
     `;
   }).join('');
-}
-// PUT THIS AT THE TOP OF THE FIRST SCRIPT TAG
-function getScoreColor(pts) {
-    if (pts >= 3) return '#27ae60'; // Green (Great)
-    if (pts === 2) return '#2980b9'; // Blue (Good)
-    return '#333';                   // Black (Standard)
 }
 function colorLive(input) {
     // 1. Maintain your original text color-changing rules
