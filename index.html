@@ -2301,18 +2301,25 @@ database.ref('golf_data/rounds').on('value', (snapshot) => {
 });
 })();
 if (typeof database !== "undefined") {
-database.ref('golf_data/rounds').on('value', (snapshot) => {
-const remoteRounds = snapshot.val();
-if (remoteRounds) {
-rounds = remoteRounds;
+  database.ref('golf_data/rounds').on('value', (snapshot) => {
+    const remoteRounds = snapshot.val();
+    if (remoteRounds) {
+      // 1. Safely handle and convert database structures into a clean array format
+      rounds = Array.isArray(remoteRounds) ? remoteRounds : Object.keys(remoteRounds).map(key => {
+          return typeof remoteRounds[key] === 'object' ? { id: key, ...remoteRounds[key] } : remoteRounds[key];
+      }).filter(Boolean);
 
-// Run the render functions directly so all views update automatically
-if (typeof renderDashboard === "function") renderDashboard();
-if (typeof updateLiveLeaderboard === 'function') updateLiveLeaderboard();
-if (typeof renderPlayers === "function") renderPlayers();
-if (typeof renderStats === "function") renderStats();
-}
-});
+      // 2. ALWAYS update the live score entry leaderboard automatically across all devices
+      if (typeof updateLiveLeaderboard === 'function') {
+          updateLiveLeaderboard();
+      }
+
+      // 3. Keep all other main interface tabs seamlessly refreshed
+      if (typeof renderDashboard === "function") renderDashboard();
+      if (typeof renderPlayers === "function") renderPlayers();
+      if (typeof renderStats === "function") renderStats();
+    }
+  });
 }
 </script>
 </body>
