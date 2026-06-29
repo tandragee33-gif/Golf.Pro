@@ -2262,6 +2262,10 @@ function renderSavedDoubles() {
         // Only show the message if the user is NOT on the "Enter Score" tab
 const currentTab = document.querySelector('.tab-content:not(.hidden)')?.id;
 if (currentTab !== 'tab-comp') {
+// Block the alert from popping up automatically when entering the app
+if (typeof window.isInitialLoadDone === 'undefined') {
+  window.isInitialLoadDone = true;
+} else {
   alert(message + "\nHandicaps updated and event locked successfully!");
 }
         
