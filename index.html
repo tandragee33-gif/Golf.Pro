@@ -1192,7 +1192,7 @@ function showTab(id) {
 
   // SAFETY SECURE LOCK: If in Player Mode, block access to any tab except "Enter Score"
   if (currentMode === 'player' && id !== 'tab-comp') {
-    alert("Access Denied! Switch view to Admin Mode to view this screen.");
+    alert("To enter Player Mode - Click OK and select ENTER SCORE.");
     // Keep the "Enter Score" tab button looking highlighted
     document.querySelectorAll('.nav button').forEach(b => b.classList.remove('active'));
     const compBtn = document.getElementById('btn-comp');
@@ -2272,7 +2272,7 @@ saveData();
         
         // Clean Trigger Rule: Only show the alert popup if an Admin is looking at the screen 
         const viewSelector = document.getElementById('app-mode-select');
-        if (viewSelector && viewSelector.value === 'player') {
+        if (viewSelector && viewSelector.value === 'admin') {
             alert(message + "\nHandicaps updated and event locked successfully!");
         }
 
