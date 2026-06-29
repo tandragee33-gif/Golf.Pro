@@ -2259,21 +2259,19 @@ function renderSavedDoubles() {
         if (typeof renderPlayers === "function") renderPlayers(); 
         if (typeof renderDashboard === "function") renderDashboard();
         
-        // Only show the message if the user is NOT on the "Enter Score" tab
-const currentTab = document.querySelector('.tab-content:not(.hidden)')?.id;
-if (currentTab !== 'tab-comp') {
-// Block the alert from popping up automatically when entering the app
-if (typeof window.isInitialLoadDone === 'undefined') {
-  window.isInitialLoadDone = true;
-} else {
-// Check what tab the app is physically displaying right now
-const activeTab = document.querySelector('.tab-content:not(.hidden)')?.id;
+saveData();
+        if (typeof renderPlayers === "function") renderPlayers(); 
+        if (typeof renderDashboard === "function") renderDashboard();
+        
+        // Clean Trigger Rule: Only show the alert popup if an Admin is looking at the screen 
+        const viewSelector = document.getElementById('app-mode-select');
+        if (viewSelector && viewSelector.value === 'admin') {
+            alert(message + "\nHandicaps updated and event locked successfully!");
+        }
 
-// Only show the popup if the user is actually active on the Admin views.
-// If it's a Player or if the app is still loading on the History dashboard, stay silent!
-if (activeTab !== 'tab-dash' && activeTab !== 'tab-comp') {
-  alert(message + "\nHandicaps updated and event locked successfully!");
-}
+        // Refresh detail view layout to visually gray out the button immediately
+        window.viewDetail(date, courseId);
+    }
         
         // Refresh detail view layout to visually gray out the button immediately
         window.viewDetail(date, courseId);
