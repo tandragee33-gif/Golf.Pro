@@ -734,13 +734,28 @@ function loadData() {
         }
     }
 
-    if (typeof updateLiveLeaderboard === 'function') {
-       updateLiveLeaderboard();
-    }
-  }, (err) => {
-    console.error("Cloud data loading failed: ", err);
+if (typeof renderRegistry === "function") renderRegistry();
+    if (typeof renderStats === "function") renderStats(); 
+    if (typeof renderDashboard === "function") renderDashboard();
+
+    // FIXED: Force the detailed sub-view leaderboard to refresh automatically if it is open 
+    const detailView = document.getElementById('dash-detail');
+    if (detailView && !detailView.classList.contains('hidden')) { 
+        const activeCourseId = document.getElementById('rCourse')?.value || (rounds[0]?.courseId); 
+        const activeDate = document.getElementById('rDate')?.value || (rounds[0]?.date); 
+        if (typeof viewDetail === "function" && activeDate && activeCourseId) { 
+            viewDetail(activeDate, activeCourseId);
+        } 
+    } 
+
+    if (typeof updateLiveLeaderboard === 'function') { 
+        updateLiveLeaderboard(); 
+    } 
+  }, (err) => { 
+      console.error("Cloud data loading failed: ", err);
   });
-}
+})(); // <--- THIS line closes the cloud initialization block safely!
+
 function saveGolfApiKey() {
     const keyField = document.getElementById('golfApiKey');
     if (keyField) {
