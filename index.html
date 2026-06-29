@@ -744,25 +744,25 @@ function loadData() {
       renderMatchplay('singles');
     }
 
- // Automatically refresh all live screens whenever a change is synced
-    if (typeof renderRegistry === "function") renderRegistry();
-    if (typeof renderStats === "function") renderStats();
-    if (typeof renderDashboard === "function") renderDashboard();
-    
-    // FIXED: Force the detailed sub-view leaderboard to refresh automatically if it is open
-    const detailView = document.getElementById('dash-detail');
-    if (detailView && !detailView.classList.contains('hidden')) {
-        // If viewDetail exists, re-run it with its current screen values to instantly draw the changes
-        const activeCourseId = document.getElementById('rCourse')?.value || (rounds[0]?.courseId);
-        const activeDate = document.getElementById('rDate')?.value || (rounds[0]?.date);
-        if (typeof viewDetail === "function" && activeDate && activeCourseId) {
-            viewDetail(activeDate, activeCourseId);
+// Automatically refresh all live screens whenever a change is synced
+    // Added a 50ms safety delay so the app finishes converting cloud data into arrays before drawing
+    setTimeout(() => {
+        if (typeof updateLiveLeaderboard === "function") updateLiveLeaderboard();
+        if (typeof renderRegistry === "function") renderRegistry();
+        if (typeof renderStats === "function") renderStats();
+        if (typeof renderDashboard === "function") renderDashboard();
+        
+        // FIXED: Force the detailed sub-view leaderboard to refresh automatically if it is open
+        const detailView = document.getElementById('dash-detail');
+        if (detailView && !detailView.classList.contains('hidden')) {
+            const activeCourseId = document.getElementById('rCourse')?.value || (rounds[0]?.courseId);
+            const activeDate = document.getElementById('rDate')?.value || (rounds[0]?.date);
+            if (typeof viewDetail === "function" && activeDate && activeCourseId) {
+                viewDetail(activeDate, activeCourseId);
+            }
         }
-    }
+    }, 50);
 
-    if (typeof updateLiveLeaderboard === 'function') {
-        updateLiveLeaderboard();
-    }
   }, (err) => {
       console.error("Cloud data loading failed: ", err);
   });
