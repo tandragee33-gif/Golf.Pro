@@ -2266,6 +2266,12 @@ if (currentTab !== 'tab-comp') {
 if (typeof window.isInitialLoadDone === 'undefined') {
   window.isInitialLoadDone = true;
 } else {
+// Check what tab the app is physically displaying right now
+const activeTab = document.querySelector('.tab-content:not(.hidden)')?.id;
+
+// Only show the popup if the user is actually active on the Admin views.
+// If it's a Player or if the app is still loading on the History dashboard, stay silent!
+if (activeTab !== 'tab-dash' && activeTab !== 'tab-comp') {
   alert(message + "\nHandicaps updated and event locked successfully!");
 }
         
