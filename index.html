@@ -479,14 +479,11 @@ function updateLiveLeaderboard() {
     const tbody = document.getElementById('live-leaderboard-body');
     if (!tbody) return;
     
-    // Grab the date from the input field
     let currentDateInput = document.getElementById('rDate') ? document.getElementById('rDate').value : '';
     
-    // FIX: If the input box is empty, automatically default to the most recent round's date 
-    // so incoming scores show up hands-free without requiring you to type or select a date first!
+    // FIXED: Properly convert dd/mm/yyyy strings so JavaScript can sort them cleanly hands-free
     if (!currentDateInput && typeof rounds !== 'undefined' && rounds.length > 0) {
         const sortedRounds = [...rounds].sort((a, b) => {
-            // Treat string dates cleanly or parse them safely
             const dateA = a.date ? new Date(a.date.split('/').reverse().join('-')) : new Date(0);
             const dateB = b.date ? new Date(b.date.split('/').reverse().join('-')) : new Date(0);
             return dateB - dateA;
