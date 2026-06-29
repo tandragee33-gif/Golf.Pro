@@ -2259,7 +2259,19 @@ function renderSavedDoubles() {
         if (typeof renderPlayers === "function") renderPlayers(); 
         if (typeof renderDashboard === "function") renderDashboard();
         
-        alert(message + "\nHandicaps updated and event locked successfully!");
+saveData();
+        if (typeof renderPlayers === "function") renderPlayers(); 
+        if (typeof renderDashboard === "function") renderDashboard();
+        
+        // Clean Trigger Rule: Only show the alert popup if an Admin is looking at the screen 
+        const viewSelector = document.getElementById('app-mode-select');
+        if (viewSelector && viewSelector.value === 'admin') {
+            alert(message + "\nHandicaps updated and event locked successfully!");
+        }
+
+        // Refresh detail view layout to visually gray out the button immediately
+        window.viewDetail(date, courseId);
+    }
         
         // Refresh detail view layout to visually gray out the button immediately
         window.viewDetail(date, courseId);
