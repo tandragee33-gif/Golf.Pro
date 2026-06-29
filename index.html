@@ -754,7 +754,7 @@ if (typeof renderRegistry === "function") renderRegistry();
   }, (err) => { 
       console.error("Cloud data loading failed: ", err);
   });
-})(); // <--- THIS line closes the cloud initialization block safely!
+}
 
 function saveGolfApiKey() {
     const keyField = document.getElementById('golfApiKey');
