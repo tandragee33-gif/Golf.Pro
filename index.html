@@ -633,6 +633,7 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const database = firebase.database();
     let players = [], courses = [], rounds = [], pairsT = null, singlesT = null, pastComps = [], club = { name: "Golf Pro Manager", logo: "" };
+window.isInitialLoadDone = false;
     let tempTeams = [];
 let selectedCourseData = null;
 
@@ -1048,13 +1049,18 @@ function saveData() {
     }
 
     function init() {
-        loadData();
-        setupInputGrids();
-        updateSeasonDropdown();
-        applyClubProfile();
-        resetRoundForm();
-        showTab('tab-dash');
-    }
+  loadData();
+  setupInputGrids();
+  updateSeasonDropdown();
+  applyClubProfile();
+  resetRoundForm();
+  showTab('tab-dash');
+
+  // Set the load flag to true 1 second after entering the app
+  setTimeout(() => {
+    window.isInitialLoadDone = true;
+  }, 1000);
+}
 
 function setupInputGrids() {
   // ROUND SCORECARD
@@ -1207,6 +1213,11 @@ function showTab(id) {
   if(id === 'tab-comp') populateRoundSelectors();
   if(id === 'tab-doubles') { renderDoublesSelector(); const now = new Date(); document.getElementById('dbDate').value = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`; }
   if(id === 'tab-pairs' || id === 'tab-singles') renderMatchplay(id.split('-')[1]);
+
+  // NEW POPUP RULE: Only show if the tab isn't "Enter Score" AND the app has finished opening
+  if (id !== 'tab-comp' && window.isInitialLoadDone === true) {
+    alert("Handicaps updated and event locked successfully!");
+  }
 }
 function populateRoundSelectors() {
     const cSel = document.getElementById('rCourse');
