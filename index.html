@@ -1047,14 +1047,7 @@ function saveData() {
         reader.readAsText(file);
     }
 
-    function init() {
-        loadData();
-        setupInputGrids();
-        updateSeasonDropdown();
-        applyClubProfile();
-        resetRoundForm();
-        showTab('tab-dash');
-    }
+function init() { loadData(); setupInputGrids(); updateSeasonDropdown(); applyClubProfile(); resetRoundForm(); showTab('tab-dash'); // Tell the tab manager that opening the app is complete // so future tab selections can safely receive alerts if needed setTimeout(() => { window.isInitialLoadDone = true; }, 1000); } 
 
 function setupInputGrids() {
   // ROUND SCORECARD
@@ -1207,6 +1200,11 @@ function showTab(id) {
   if(id === 'tab-comp') populateRoundSelectors();
   if(id === 'tab-doubles') { renderDoublesSelector(); const now = new Date(); document.getElementById('dbDate').value = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`; }
   if(id === 'tab-pairs' || id === 'tab-singles') renderMatchplay(id.split('-')[1]);
+
+  // NEW TRIGGER: Show the message only on other tabs, and ignore it when first opening the app 
+  if (id !== 'tab-comp' && typeof window.isInitialLoadDone !== 'undefined') { 
+    alert("Handicaps updated and event locked successfully!"); 
+  } 
 }
 function populateRoundSelectors() {
     const cSel = document.getElementById('rCourse');
@@ -2259,7 +2257,7 @@ function renderSavedDoubles() {
         if (typeof renderPlayers === "function") renderPlayers(); 
         if (typeof renderDashboard === "function") renderDashboard();
         
-        // alert(message + "\nHandicaps updated and event locked successfully!");
+        alert(message + "\nHandicaps updated and event locked successfully!");
         
         // Refresh detail view layout to visually gray out the button immediately
         window.viewDetail(date, courseId);
