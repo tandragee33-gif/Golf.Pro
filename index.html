@@ -2330,14 +2330,23 @@ if (typeof database !== "undefined") {
   database.ref('golf_data/rounds').on('value', (snapshot) => {
     const remoteRounds = snapshot.val();
     if (remoteRounds) {
-      // 1. Safely handle and convert database structures into a clean array format
+      // 1. Convert data cleanly into an array format
       rounds = Array.isArray(remoteRounds) ? remoteRounds : Object.keys(remoteRounds).map(key => {
           return typeof remoteRounds[key] === 'object' ? { id: key, ...remoteRounds[key] } : remoteRounds[key];
       }).filter(Boolean);
 
-      // 2. ALWAYS update the live score entry leaderboard automatically across all devices
-      if (typeof updateLiveLeaderboard === 'function') {
-          updateLiveLeaderboard();
+      // 2. FIXED: Re-run local calculations using cloud data before updating the screen!
+      if (typeof courses !== 'undefined' && typeof players !== 'undefined') {
+          const liveCourseSelect = document.getElementById('rCourse');
+          const livePlayerSelect = document.getElementById('rPlayer');
+          
+          if (liveCourseSelect && livePlayerSelect && liveCourseSelect.value && livePlayerSelect.value) {
+              // If you are actively typing a score on this device, don't overwrite your local entries
+              if (typeof calculateLiveStableford === 'function') calculateLiveStableford();
+          } else {
+              // If this device is just viewing, force-render the live leaderboard hands-free
+              if (typeof updateLiveLeaderboard === 'function') updateLiveLeaderboard();
+          }
       }
 
       // 3. Keep all other main interface tabs seamlessly refreshed
