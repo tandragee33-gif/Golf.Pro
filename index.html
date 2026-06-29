@@ -741,6 +741,13 @@ function loadData() {
     console.error("Cloud data loading failed: ", err);
   });
 }
+function saveGolfApiKey() {
+    const keyField = document.getElementById('golfApiKey');
+    if (keyField) {
+        localStorage.setItem('golf_api_key', keyField.value.trim());
+        alert('API Key Saved Successfully!');
+    }
+}
 async function searchCourse() {
 
     const apiKey =
