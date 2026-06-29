@@ -1211,7 +1211,7 @@ function showTab(id) {
   if(id === 'tab-setup') renderAdmin();
   if(id === 'tab-dash') { closeDetail(); updateSeasonDropdown(); renderDashboard(); renderPastComps(); }
   if(id === 'tab-stats') renderStats();
-  if(id === 'tab-comp') populateRoundSelectors();
+  if(id === 'tab-comp') populateRoundSelectors(); if (typeof updateLiveLeaderboard === 'function') updateLiveLeaderboard(); } 
   if(id === 'tab-doubles') { renderDoublesSelector(); const now = new Date(); document.getElementById('dbDate').value = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`; }
   if(id === 'tab-pairs' || id === 'tab-singles') renderMatchplay(id.split('-')[1]);
 }
