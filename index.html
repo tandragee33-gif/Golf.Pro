@@ -2304,57 +2304,49 @@ database.ref('golf_data/rounds').on('value', (snapshot) => {
 });
 })();
 if (typeof database !== "undefined") {
-  database.ref('golf_data/rounds').on('value', (snapshot) => {
-    const remoteRounds = snapshot.val();
-    if (remoteRounds) {
-      // 1. Convert data cleanly into an array format
-      rounds = Array.isArray(remoteRounds) ? remoteRounds : Object.keys(remoteRounds).map(key => {
-          return typeof remoteRounds[key] === 'object' ? { id: key, ...remoteRounds[key] } : remoteRounds[key];
-      }).filter(Boolean);
+    // SINGLE MASTER LISTENER FOR CLOUD CHANGES
+    database.ref('golf_data/rounds').on('value', (snapshot) => {
+        const remoteRounds = snapshot.val();
+        if (remoteRounds) {
+            // 1. Convert data cleanly into an array format
+            rounds = Array.isArray(remoteRounds) ? remoteRounds : Object.keys(remoteRounds).map(key => {
+                return typeof remoteRounds[key] === 'object' ? { id: key, ...remoteRounds[key] } : remoteRounds[key];
+            }).filter(Boolean);
 
-      // 2. FIXED: Re-run local calculations using cloud data before updating the screen!
-      if (typeof courses !== 'undefined' && typeof players !== 'undefined') {
-          const liveCourseSelect = document.getElementById('rCourse');
-          const livePlayerSelect = document.getElementById('rPlayer');
-          
-          if (liveCourseSelect && livePlayerSelect && liveCourseSelect.value && livePlayerSelect.value) {
-              // If you are actively typing a score on this device, don't overwrite your local entries
-              if (typeof calculateLiveStableford === 'function') calculateLiveStableford();
-          } else {
-              // If this device is just viewing, force-render the live leaderboard hands-free
-              if (typeof updateLiveLeaderboard === 'function') updateLiveLeaderboard();
-          }
-      }
+            // 2. Safely update screens depending on whether someone is typing on this device
+            if (typeof courses !== 'undefined' && typeof players !== 'undefined') {
+                const liveCourseSelect = document.getElementById('rCourse');
+                const livePlayerSelect = document.getElementById('rPlayer');
+                
+                if (liveCourseSelect && livePlayerSelect && liveCourseSelect.value && livePlayerSelect.value) {
+                    // This device is actively entering a score: protect their input box
+                    if (typeof calculateLiveStableford === 'function') calculateLiveStableford();
+                } else {
+                    // This device is just viewing (like a clubhouse monitor or a spectator): refresh instantly
+                    if (typeof updateLiveLeaderboard === 'function') updateLiveLeaderboard();
+                }
+            } else {
+                // Fallback: If elements aren't loaded, update the leaderboard anyway
+                if (typeof updateLiveLeaderboard === 'function') updateLiveLeaderboard();
+            }
 
-      // 3. Keep all other main interface tabs seamlessly refreshed
-      if (typeof renderDashboard === "function") renderDashboard();
-      if (typeof renderPlayers === "function") renderPlayers();
-      if (typeof renderStats === "function") renderStats();
-    }
-  });
-}
-// --- ADD THESE LISTENERS AT THE END OF YOUR SCRIPT ---
-// Listen specifically for changes to rounds to update leaderboard instantly
-if (typeof database !== "undefined") {
-  database.ref('golf_data/rounds').on('value', (snapshot) => {
-    const remoteRounds = snapshot.val();
-    if (remoteRounds) {
-      // Convert Firebase object to array if needed
-      rounds = Array.isArray(remoteRounds) 
-        ? remoteRounds 
-        : Object.keys(remoteRounds).map(key => ({ id: key, ...remoteRounds[key] }));
+            // 3. Keep all other interface views synchronized
+            if (typeof renderDashboard === "function") renderDashboard();
+            if (typeof renderPlayers === "function") renderPlayers();
+            if (typeof renderStats === "function") renderStats();
+        }
+    });
 
-      // Update all views
-      if (typeof updateLiveLeaderboard === "function") updateLiveLeaderboard();
-      if (typeof renderDashboard === "function") renderDashboard();
-      if (typeof renderStats === "function") renderStats();
-    }
-  });
-
-  // Also listen for single changes to update faster
-  database.ref('golf_data/rounds').on('child_changed', () => {
-    if (typeof updateLiveLeaderboard === "function") updateLiveLeaderboard();
-  });
+    // Fast-track trigger for instant individual row updates
+    database.ref('golf_data/rounds').on('child_changed', () => {
+        const liveCourseSelect = document.getElementById('rCourse');
+        const livePlayerSelect = document.getElementById('rPlayer');
+        const isTyping = liveCourseSelect && livePlayerSelect && liveCourseSelect.value && livePlayerSelect.value;
+        
+        if (!isTyping && typeof updateLiveLeaderboard === "function") {
+            updateLiveLeaderboard();
+        }
+    });
 }
 </script>
 </body>
