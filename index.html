@@ -1196,7 +1196,7 @@ function showTab(id) {
 
   // SAFETY SECURE LOCK: If in Player Mode, block access to any tab except "Enter Score"
   if (currentMode === 'player' && id !== 'tab-comp') {
-    alert("To enter Player Mode - Click OK and select ENTER SCORE.");
+    alert("To continue - please click OK and select ENTER SCORE.");
     // Keep the "Enter Score" tab button looking highlighted
     document.querySelectorAll('.nav button').forEach(b => b.classList.remove('active'));
     const compBtn = document.getElementById('btn-comp');
