@@ -1164,7 +1164,7 @@ if (livePlayerSelect && liveCourseSelect && liveDateInput) {
     if (pId && cId && dVal) {
         // Find if this round exists in our local array
         const roundIndex = rounds.findIndex(r => String(r.playerId) === String(pId) && String(r.courseId) === String(cId) && r.date === dVal);
-        if (roundIndex !== -1) {
+if (roundIndex !== -1) {
             // Update scores and totals for this active round row
             for (let h = 1; h <= 18; h++) {
                 const inputs = document.querySelectorAll('.round-scores-val');
@@ -1174,9 +1174,12 @@ if (livePlayerSelect && liveCourseSelect && liveDateInput) {
             }
             rounds[roundIndex].points = totalPoints;
             
-            // Push the updated array up to Firebase instantly
+            // FIXED: Target ONLY this specific row index path in Firebase instead of rewriting everything!
             if (typeof database !== 'undefined') {
-                database.ref('golf_data/rounds').set(rounds);
+                database.ref(`golf_data/rounds/${roundIndex}`).update({
+                    scores: rounds[roundIndex].scores,
+                    points: totalPoints
+                });
             }
         }
     }
