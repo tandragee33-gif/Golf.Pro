@@ -1,13 +1,11 @@
-// This is safe code
-// It has points when entering score
-//Uses golfcourseapi.com
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Golf Pro Manager - Tournament Edition</title>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
     <style>
         :root { --primary: #1b5e20; --accent: #ffd700; --danger: #d32f2f; --light: #f4f4f4; --success: #2e7d32; --info: #0288d1; }
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; background: #e0e0e0; color: #333; }
@@ -64,6 +62,8 @@
             .card { box-shadow: none; border: none; }
             #dash-detail { display: block !important; position: absolute; top: 0; width: 100%; }
             .hidden { display: none !important; }
+/* Custom lockdown hidden rule */
+.lock-hidden { display: none !important; }
             #dash-detail.hidden { display: block !important; }
         }
     </style>
@@ -72,6 +72,7 @@
 
 <div class="header no-print">
     <img id="club-logo-display" src="" alt="Logo">
+<div style="order: 2; margin-left: auto; display: flex; align-items: center; gap: 6px;"> <label for="app-mode-select" style="font-size: 12px; font-weight: bold; color: var(--primary); white-space: nowrap;">View:</label> <select id="app-mode-select" onchange="toggleAppMode()" style="width: auto; margin: 0; padding: 6px; font-size: 12px;"><option value="player">Player Mode</option><option value="admin">Admin Mode</option> </select> </div> 
     <h1 id="header-club-name">Golf Pro Manager</h1>
 </div>
 
@@ -137,6 +138,25 @@
     <!-- ROUND ENTRY -->
     <div id="tab-comp" class="tab-content hidden">
         <div class="card">
+<div class="card" id="player-live-leaderboard-card" style="border-left: 5px solid var(--success); margin-bottom: 15px;">
+  <h3 style="margin-top: 0; color: var(--success); display: flex; align-items: center; gap: 8px;">🏆 Today's Live Leaderboard</h3>
+  <div style="overflow-x: auto;">
+    <table class="stats-table" style="margin-top: 5px;">
+      <thead>
+        <tr>
+          <th>Pos</th>
+          <th>Player</th>
+          <th>Course</th>
+          <th>Gross</th>
+          <th>Stableford</th>
+        </tr>
+      </thead>
+      <tbody id="live-leaderboard-body">
+        <tr><td colspan="5" style="text-align:center; color:#888;">No scores saved for today yet.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
             <h3 id="roundTitle">New Round</h3>
             <input type="hidden" id="editRoundId">
             <label style="font-size:12px;">Date (dd/mm/yyyy):</label>
@@ -403,6 +423,122 @@
 </div>
 
 <script>
+// --- PLAYER MODE & LIVE LEADERBOARD MODULE ---
+
+function toggleAppMode() {
+  const modeSelect = document.getElementById('app-mode-select');
+  const mode = modeSelect.value;
+  
+  // Set your secret PIN right here! (Change "1234" to whatever numbers you prefer)
+  const secretPin = "1234"; 
+
+  // If a player tries to click back into Admin Mode, prompt for the PIN
+  if (mode === 'admin') {
+    const enteredPin = prompt("Please enter the Admin PIN to unlock management features:");
+    
+    if (enteredPin !== secretPin) {
+      alert("Incorrect PIN! Access denied.");
+      modeSelect.value = "player"; // Force the drop-down selector back to Player view
+      return; 
+    }
+  }
+  
+  // List of all administration navigation menu buttons to hide
+  const adminTabs = [
+    document.getElementById('btn-dash'),     
+    document.getElementById('btn-team'),     
+    document.getElementById('btn-doubles'),  
+    document.getElementById('btn-stats'),    
+    document.getElementById('btn-pairs'),    
+    document.getElementById('btn-singles'),  
+    document.getElementById('btn-setup')     
+  ];
+
+  const lockRoundBtn = document.getElementById('btn-lock-round'); 
+
+  if (mode === 'player') {
+    // 1. Hide the admin buttons away using your lock-hidden CSS class rule
+    adminTabs.forEach(tabBtn => {
+      if (tabBtn) tabBtn.classList.add('lock-hidden');
+    });
+    if (lockRoundBtn) lockRoundBtn.classList.add('lock-hidden');
+    
+    // 2. Instantly force the active view screen to the score entry page
+    showTab('tab-comp');
+    if (typeof updateLiveLeaderboard === 'function') updateLiveLeaderboard();
+  } else {
+    // Admin Mode verified: Bring back menu visibility safely
+    adminTabs.forEach(tabBtn => {
+      if (tabBtn) tabBtn.classList.remove('lock-hidden');
+    });
+    if (lockRoundBtn) lockRoundBtn.classList.remove('lock-hidden');
+  }
+}
+
+function updateLiveLeaderboard() {
+   const tbody = document.getElementById('live-leaderboard-body');
+   if (!tbody) return;
+
+   let currentDateInput = document.getElementById('rDate') ? document.getElementById('rDate').value : '';
+   
+   // THE CRITICAL FIX: If the screen box is blank, use today's actual live date as a backup 
+   // so incoming cloud updates are allowed to pass through the filter completely hands-free!
+   if (!currentDateInput) {
+       const today = new Date();
+       currentDateInput = `${String(today.getDate()).padStart(2, '0')}/${String(today.getMonth() + 1).padStart(2, '0')}/${today.getFullYear()}`;
+   }
+
+   // 1. Get already saved rounds for today
+   let activeRounds = rounds.filter(r => {
+       return r.date === currentDateInput || (typeof formatDateDisplay === 'function' && formatDateDisplay(r.date) === currentDateInput);
+   });
+
+   // 2. Safely grab what's currently being typed on the screen right now
+   const liveCourseId = document.getElementById('rCourse') ? document.getElementById('rCourse').value : '';
+   const livePlayerId = document.getElementById('rPlayer') ? document.getElementById('rPlayer').value : '';
+   const livePointsText = document.getElementById('live-total-points') ? document.getElementById('live-total-points').innerText : '0';
+   const liveGrossText = document.getElementById('live-total-gross') ? document.getElementById('live-total-gross').innerText : '0';
+
+   const livePoints = parseInt(livePointsText) || 0;
+   const liveGross = parseInt(liveGrossText) || 0;
+
+   if (liveCourseId && livePlayerId && (liveGross > 0 || livePoints > 0)) {
+       const courseObj = courses.find(c => String(c.id) === String(liveCourseId));
+       const playerObj = players.find(p => String(p.id) === String(livePlayerId));
+
+       // Remove old saved entry for this specific player to prevent duplicate lines on screen
+       activeRounds = activeRounds.filter(r => String(r.playerId) !== String(livePlayerId));
+       
+       // Inject their active live session into the display pool
+       activeRounds.push({
+           playerName: playerObj ? playerObj.name : 'Player',
+           courseName: courseObj ? courseObj.name : 'Course',
+           totalGross: liveGross,
+           points: livePoints,
+           isLive: true
+       });
+   }
+
+   // Sort by Stableford points descending
+   activeRounds.sort((a, b) => (b.points || 0) - (a.points || 0));
+
+   // Render rows into the table
+   if (activeRounds.length === 0) {
+       tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#888;">No scores saved for today yet.</td></tr>';
+   } else {
+       tbody.innerHTML = activeRounds.map((r, index) => {
+           const styleAttr = r.isLive ? 'style="color: var(--success); font-weight: bold; background-color: #f9fff9;"' : '';
+           const liveBadge = r.isLive ? ' <span style="font-size: 9px; padding: 2px 4px; background: var(--success); color: white; border-radius: 4px; margin-left: 4px;">TYPING</span>' : '';
+           return `<tr ${styleAttr}>
+               <td>${index + 1}</td>
+               <td>${r.playerName || 'Unknown'}${liveBadge}</td>
+               <td>${r.courseName || 'Unknown'}</td>
+               <td>${r.totalGross || 0}</td>
+               <td>${r.points || 0}</td>
+           </tr>`;
+       }).join('');
+   }
+}
 // PUT THIS AT THE TOP OF THE FIRST SCRIPT TAG
 function getScoreColor(pts) {
     if (pts >= 3) return '#27ae60'; // Green (Great)
@@ -410,11 +546,94 @@ function getScoreColor(pts) {
     return '#333';                   // Black (Standard)
 }
 function colorLive(input) {
-    const val = parseInt(input.value);
-    if (val >= 7) { input.style.color = '#e74c3c'; }      // Red (Bad)
-    else if (val <= 3 && val > 0) { input.style.color = '#27ae60'; } // Green (Good)
-    else { input.style.color = '#333'; }                 // Black (Normal)
+    // 1. Maintain your original text color-changing rules
+    const val = parseInt(input.value) || 0;
+    if (val <= 3 && val > 0) { 
+        input.style.color = '#27ae60'; // Green
+    } else { 
+        input.style.color = '#333'; // Black
+    }
+
+    // 2. LIVE CLOUD SYNCING: Grab current selections
+    const cId = document.getElementById('rCourse').value;
+    const pId = document.getElementById('rPlayer').value;
+    if (!cId || !pId) return; // Stop if they haven't picked a course/player yet
+
+    const crs = courses.find(c => String(c.id) === String(cId));
+    const plr = players.find(p => String(p.id) === String(pId));
+    if (!crs || !plr) return;
+
+    // 3. Read all 18 boxes right now
+    const scs = Array.from(document.querySelectorAll('.round-scores-val')).map(i => parseInt(i.value) || 0);
+    const isoDate = parseDateInput(document.getElementById('rDate').value);
+const editId = document.getElementById('editRoundId').value;
+    // FIXED ID: Uses the player and course combo so other devices can track it live
+    const activeRoundId = editId ? editId : `live-${pId}-${cId}`;
+    
+    // Save this ID so it stays consistent while typing a new round
+    if (!editId && !window.currentLiveRoundId) {
+        window.currentLiveRoundId = activeRoundId;
+    }
+
+    // 4. Calculate Stableford points on the fly for the live leaderboard
+    const ptsArray = scs.map((s, i) => {
+        if (s <= 0) return 0;
+        const par = parseInt(crs.pars[i]) || 0;
+        const si = parseInt(crs.si[i]) || 0;
+        const hc = Math.round(parseFloat(plr.handicap)) || 0;
+        const allow = Math.floor(hc / 18) + (hc % 18 >= si ? 1 : 0);
+        return Math.max(0, par - (s - allow) + 2);
+    });
+    const totalPts = ptsArray.reduce((a, b) => a + b, 0);
+
+    // 5. Track progress hole number
+    const lastHoleIndex = scs.map((s, idx) => s > 0 ? idx + 1 : 0);
+    const currentProgress = Math.max(0, ...lastHoleIndex);
+
+    // 6. Package it up
+    const liveRound = {
+        id: activeRoundId,
+        date: isoDate,
+        courseId: crs.id,
+        courseName: crs.name,
+        playerId: plr.id,
+        playerName: plr.name,
+        points: totalPts,
+        scores: scs,
+        pointsArray: ptsArray,
+        season: isoDate.split('-')[0],
+        longDrive: document.getElementById('rLongDrive').value === "Yes",
+        nearPin: document.getElementById('rNearPin').value === "Yes",
+        lastHoleCompleted: currentProgress
+    };
+
+    // 7. Overwrite or insert this round into your local array
+    const exists = rounds.some(x => String(x.id) === String(activeRoundId));
+    if (exists) {
+        rounds = rounds.map(x => String(x.id) === String(activeRoundId) ? liveRound : x);
+    } else {
+        rounds.push(liveRound);
+    }
+
+    // 8. Fire it directly up to Firebase instantly!
+    if (typeof saveData === "function") {
+        saveData(); 
+    }
 }
+// --- GOOGLE FIREBASE CONNECTION ---
+const firebaseConfig = {
+  apiKey: "AIzaSyAsni1SXEb2GGxQk4cHsh0PBj-asRMmRJ0",
+  authDomain: "golfprov1.firebaseapp.com",
+  databaseURL: "https://golfprov1-default-rtdb.firebaseio.com", // Linked to your exact instance!
+  projectId: "golfprov1",
+  storageBucket: "golfprov1.firebasestorage.app",
+  messagingSenderId: "154726704641",
+  appId: "1:154726704641:web:88b1c15b25c6d2d2680200"
+};
+
+// Start the cloud engine
+firebase.initializeApp(firebaseConfig);
+const database = firebase.database();
     let players = [], courses = [], rounds = [], pairsT = null, singlesT = null, pastComps = [], club = { name: "Golf Pro Manager", logo: "" };
     let tempTeams = [];
 let selectedCourseData = null;
@@ -444,36 +663,46 @@ function getTieBreaker(pointsArray) {
         return `${parts[2]}-${parts[1]}-${parts[0]}`;
     }
 
+// --- UPGRADED CLOUD LOADING MECHANISM (LIVE UPDATES) ---
 function loadData() {
-    // 1. Core Data
-    players = JSON.parse(localStorage.getItem('g_players')) || [];
-    courses = JSON.parse(localStorage.getItem('g_courses')) || [];
-    rounds = JSON.parse(localStorage.getItem('g_rounds')) || [];
-    pastComps = JSON.parse(localStorage.getItem('g_pastComps')) || [];
-    club = JSON.parse(localStorage.getItem('g_club')) || { name: "Golf Pro Manager", logo: "" };
-    competitionTeams = JSON.parse(localStorage.getItem('g_compTeams')) || [];
-
-    // 2. Load the KO Memory (FIXED with || [])
-    pairsT = JSON.parse(localStorage.getItem('g_pairsT')) || [];
-    singlesT = JSON.parse(localStorage.getItem('g_singlesT')) || [];
-
-    // 3. Draw Screens
+  // Use .on('value') instead of .once() to keep an open, live data stream between all devices
+  database.ref('golf_data/').on('value', (snapshot) => {
+    const data = snapshot.val();
+    
+    if (data) {
+      // FIXED: Only overwrite arrays if they actually exist in the incoming cloud packet!
+      if (data.players) players = data.players;
+      if (data.courses) courses = data.courses;
+      if (data.rounds) rounds = data.rounds;
+      if (data.pastComps) pastComps = data.pastComps;
+      if (data.club) club = data.club;
+      if (data.competitionTeams) competitionTeams = data.competitionTeams;
+      if (data.pairsT) pairsT = data.pairsT;
+      if (data.singlesT) singlesT = data.singlesT;
+    } else {
+      // Fallback: If cloud is completely empty, look for older local phone backups
+      players = JSON.parse(localStorage.getItem('g_players')) || [];
+      courses = JSON.parse(localStorage.getItem('g_courses')) || [];
+      rounds = JSON.parse(localStorage.getItem('g_rounds')) || [];
+      pastComps = JSON.parse(localStorage.getItem('g_pastComps')) || [];
+      club = JSON.parse(localStorage.getItem('g_club')) || { name: "Golf Pro Manager", logo: "" };
+      competitionTeams = JSON.parse(localStorage.getItem('g_compTeams')) || [];
+      pairsT = JSON.parse(localStorage.getItem('g_pairsT')) || [];
+      singlesT = JSON.parse(localStorage.getItem('g_singlesT')) || [];
+    }
+    
+    // Run all your standard layout and graphic functions safely on every update
     try { 
         if (typeof renderActiveTeams === "function") renderActiveTeams(); 
-    } catch(e) {
-        console.log("Team draw failed"); 
-    }
+    } catch(e) { console.log("Team draw failed"); }
     
     try { 
         if (typeof renderMatchplay === "function") {
-            renderMatchplay('pairs');
-            renderMatchplay('singles');
+          renderMatchplay('pairs');
+          renderMatchplay('singles');
         }
-    } catch(e) {
-        console.log("Matchplay draw failed"); 
-    }
+    } catch(e) { console.log("Matchplay draw failed"); }
 
-    // 4. Load the Doubles Combined
     try {
         const saved = localStorage.getItem('g_tempTeams');
         if (saved) {
@@ -482,28 +711,48 @@ function loadData() {
         } else {
             tempTeams = [];
         }
-    } catch(e) {
-        console.log("Doubles draw failed"); 
-    }
+    } catch(e) { console.log("Doubles draw failed"); }
 
-    // 5. Force Draw for empty KOs (UPDATED)
     if (pairsT.length === 0 && typeof renderMatchplay === "function") {
-        renderMatchplay('pairs');
+      renderMatchplay('pairs');
     }
     if (singlesT.length === 0 && typeof renderMatchplay === "function") {
-        renderMatchplay('singles');
+      renderMatchplay('singles');
     }
-} // <--- loadData closes perfectly here.
 
-// All the stray duplicate text that was here has been DELETED.
+// Automatically refresh all live screens whenever a change is synced
+    // Added a 50ms safety delay so the app finishes converting cloud data into arrays before drawing
+    setTimeout(() => {
+        if (typeof updateLiveLeaderboard === "function") updateLiveLeaderboard();
+        if (typeof renderRegistry === "function") renderRegistry();
+        if (typeof renderStats === "function") renderStats();
+        if (typeof renderDashboard === "function") renderDashboard();
+        
+        // FIXED: Force the detailed sub-view leaderboard to refresh automatically if it is open
+        const detailView = document.getElementById('dash-detail');
+        if (detailView && !detailView.classList.contains('hidden')) {
+            const activeCourseId = document.getElementById('rCourse')?.value || (rounds[0]?.courseId);
+            const activeDate = document.getElementById('rDate')?.value || (rounds[0]?.date);
+            if (typeof viewDetail === "function" && activeDate && activeCourseId) {
+                viewDetail(activeDate, activeCourseId);
+            }
+        }
+    }, 50);
+
+  }, (err) => {
+      console.error("Cloud data loading failed: ", err);
+  });
+}
 
 function saveGolfApiKey() {
-    const key = document.getElementById('golfApiKey').value;
-    localStorage.setItem('golf_api_key', key);
-    alert('API Key Saved!');
+   const keyField = document.getElementById('golfApiKey');
+   if (keyField) {
+       localStorage.setItem('golf_api_key', keyField.value.trim());
+       alert('API Key Saved Successfully!');
+   }
 }
-async function searchCourse() {
 
+async function searchCourse() {
     const apiKey =
         localStorage.getItem(
             'golf_api_key'
@@ -736,16 +985,34 @@ window.tempYards =
 alert(JSON.stringify(selectedTee.holes[0]));
 }
 
-    function saveData() {
-        localStorage.setItem('g_players', JSON.stringify(players));
-        localStorage.setItem('g_courses', JSON.stringify(courses));
-        localStorage.setItem('g_rounds', JSON.stringify(rounds));
-        localStorage.setItem('g_pairsT', JSON.stringify(pairsT));
-        localStorage.setItem('g_singlesT', JSON.stringify(singlesT));
-        localStorage.setItem('g_pastComps', JSON.stringify(pastComps));
-        localStorage.setItem('g_club', JSON.stringify(club));
-localStorage.setItem('g_compTeams', JSON.stringify(competitionTeams));
-    }
+// --- UPGRADED SAVING MECHANISM ---
+function saveData() {
+  // Keep your local storage backup exactly as it was
+  localStorage.setItem('g_players', JSON.stringify(players));
+  localStorage.setItem('g_courses', JSON.stringify(courses));
+  localStorage.setItem('g_rounds', JSON.stringify(rounds));
+  localStorage.setItem('g_pairsT', JSON.stringify(pairsT));
+  localStorage.setItem('g_singlesT', JSON.stringify(singlesT));
+  localStorage.setItem('g_pastComps', JSON.stringify(pastComps));
+  localStorage.setItem('g_club', JSON.stringify(club));
+  localStorage.setItem('g_compTeams', JSON.stringify(competitionTeams));
+
+  // Push EVERYTHING up to your Google Firebase Cloud instantly!
+  database.ref('golf_data/').set({
+    players: players,
+    courses: courses,
+    rounds: rounds,
+    pairsT: pairsT,
+    singlesT: singlesT,
+    pastComps: pastComps,
+    club: club,
+    competitionTeams: (typeof competitionTeams !== 'undefined' ? competitionTeams : [])
+  }).then(() => {
+    console.log("Cloud synced perfectly.");
+  }).catch((err) => {
+    console.error("Cloud syncing issue: ", err);
+  });
+}
 
     // BACKUP FUNCTION
     function backupData() {
@@ -804,7 +1071,7 @@ function setupInputGrids() {
   const roundEl = document.getElementById('round-scores');
   roundEl.innerHTML = '';
   for (let i = 1; i <= 18; i++) {
-    roundEl.innerHTML += ` <div class="hole-input" style="border:1px solid #ddd; border-radius:10px; padding:8px; background:#fafafa; text-align:center;"> <div style="font-size:11px; color:#666;">Hole</div> <div style="font-weight:bold; font-size:16px;">${i}</div> <input type="number" inputmode="numeric" class="round-scores-val" style="font-size:20px; font-weight:bold; text-align:center; margin-top:8px;" oninput="moveToNext(this); colorLive(this); calculateLiveStableford()"> <div style="font-size:11px; margin-top:4px; color:#666;">Pts: <span class="live-hole-pts">0</span></div> </div>`;
+    roundEl.innerHTML += ` <div class="hole-input" style="border:1px solid #ddd; border-radius:10px; padding:8px; background:#fafafa; text-align:center;"> <div style="font-size:11px; color:#666;">Hole</div> <div style="font-weight:bold; font-size:16px;">${i}</div> <input type="number" inputmode="numeric" class="round-scores-val" style="font-size:20px; font-weight:bold; text-align:center; margin-top:8px;" oninput="calculateLiveStableford(); colorLive(this); if(typeof saveData==='function')saveData(); moveToNext(this);"> <div style="font-size:11px; margin-top:4px; color:#666;">Pts: <span class="live-hole-pts">0</span></div> </div>`;
   }
 
   // COURSE SETUP GRIDS
@@ -881,30 +1148,82 @@ function calculateLiveStableford() {
     totalPoints += holePoints;
   });
 
-  // Put overall total values into the HTML box above the Save button
+// Put overall total values into the HTML box above the Save button
   document.getElementById('live-total-gross').innerText = totalGross;
   document.getElementById('live-total-points').innerText = totalPoints;
-}
-    function showTab(id) {
-        document.querySelectorAll('.tab-content').forEach(t => t.classList.add('hidden'));
-        document.querySelectorAll('.nav button').forEach(b => b.classList.remove('active'));
-        document.getElementById(id).classList.remove('hidden');
-        document.getElementById('btn-' + id.split('-')[1]).classList.add('active');
-        
-        loadData();
-        if(id === 'tab-team') renderTeamSelector();
-        if(id === 'tab-setup') renderAdmin();
-        if(id === 'tab-dash') { closeDetail(); updateSeasonDropdown(); renderDashboard(); renderPastComps(); }
-        if(id === 'tab-stats') renderStats();
-        if(id === 'tab-comp') populateRoundSelectors();
-        if(id === 'tab-doubles') {
-            renderDoublesSelector();
-            const now = new Date();
-            document.getElementById('dbDate').value = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`;
-        }
-        if(id === 'tab-pairs' || id === 'tab-singles') renderMatchplay(id.split('-')[1]);
-    }
+// Automatically update Firebase while typing so other devices see it live
+const livePlayerSelect = document.getElementById('rPlayer');
+const liveCourseSelect = document.getElementById('rCourse');
+const liveDateInput = document.getElementById('rDate');
 
+if (livePlayerSelect && liveCourseSelect && liveDateInput) {
+    const pId = livePlayerSelect.value;
+    const cId = liveCourseSelect.value;
+    const dVal = liveDateInput.value;
+    
+    if (pId && cId && dVal) {
+        // Find if this round exists in our local array
+        const roundIndex = rounds.findIndex(r => String(r.playerId) === String(pId) && String(r.courseId) === String(cId) && r.date === dVal);
+if (roundIndex !== -1) {
+            // Update scores and totals for this active round row
+            for (let h = 1; h <= 18; h++) {
+                const inputs = document.querySelectorAll('.round-scores-val');
+                if (inputs && inputs[h - 1]) {
+                    rounds[roundIndex].scores[h] = parseInt(inputs[h - 1].value) || 0;
+                }
+            }
+            rounds[roundIndex].points = totalPoints;
+            
+            // FIXED: Target ONLY this specific row index path in Firebase instead of rewriting everything!
+            if (typeof database !== 'undefined') {
+                database.ref(`golf_data/rounds/${roundIndex}`).update({
+                    scores: rounds[roundIndex].scores,
+                    points: totalPoints
+                });
+            }
+        }
+    }
+}
+if (typeof updateLiveLeaderboard === 'function') updateLiveLeaderboard(); 
+
+  // Automatically refresh dashboards and live leaderboards on every keypress
+  if (typeof renderDashboard === 'function') renderDashboard();
+  if (typeof updateLiveLeaderboard === 'function') updateLiveLeaderboard();
+}
+
+function showTab(id) {
+  // Get what view mode we are currently on
+  const modeSelect = document.getElementById('app-mode-select');
+  const currentMode = modeSelect ? modeSelect.value : 'admin';
+
+  // SAFETY SECURE LOCK: If in Player Mode, block access to any tab except "Enter Score"
+  if (currentMode === 'player' && id !== 'tab-comp') {
+    alert("To enter Player Mode - Click OK and select ENTER SCORE.");
+    // Keep the "Enter Score" tab button looking highlighted
+    document.querySelectorAll('.nav button').forEach(b => b.classList.remove('active'));
+    const compBtn = document.getElementById('btn-comp');
+    if (compBtn) compBtn.classList.add('active');
+    return; // Force stop right here
+  }
+
+  // Your original tab switching actions
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.add('hidden'));
+  document.querySelectorAll('.nav button').forEach(b => b.classList.remove('active'));
+  document.getElementById(id).classList.remove('hidden');
+  document.getElementById('btn-' + id.split('-')[1]).classList.add('active');
+  
+  loadData(); 
+  if(id === 'tab-team') renderTeamSelector();
+  if(id === 'tab-setup') renderAdmin();
+  if(id === 'tab-dash') { closeDetail(); updateSeasonDropdown(); renderDashboard(); renderPastComps(); }
+  if(id === 'tab-stats') renderStats();
+  
+  // CHANGED THIS LINE TO TRIGGER THE LEADERBOARD DRAW IMMEDIATELY
+  if(id === 'tab-comp') { populateRoundSelectors(); if (typeof updateLiveLeaderboard === 'function') updateLiveLeaderboard(); }
+  
+  if(id === 'tab-doubles') { renderDoublesSelector(); const now = new Date(); document.getElementById('dbDate').value = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`; }
+  if(id === 'tab-pairs' || id === 'tab-singles') renderMatchplay(id.split('-')[1]);
+}
 function populateRoundSelectors() {
     const cSel = document.getElementById('rCourse');
     const pSel = document.getElementById('rPlayer');
@@ -1016,30 +1335,48 @@ function updateSeasonDropdown() {
         if(tourneySel) tourneySel.innerHTML = seasons.map(s => `<option value="${s}">${s} Season</option>`).join('');
     }
 
-    function renderDashboard() {
-        const s = document.getElementById('dashSeason').value;
-        const comps = rounds.filter(r => r.season === s).reduce((acc, r) => { 
-            const k = `${r.date}|${r.courseId}`; 
-            if (!acc[k]) acc[k] = { date: r.date, course: r.courseName, id: r.courseId, count: 0 }; 
-            acc[k].count++; 
-            return acc; 
-        }, {});
-        document.getElementById('dash-list').innerHTML = Object.values(comps).map(c => `
-            <div class="item-row" onclick="viewDetail('${c.date}','${c.id}')">
-                <span><b>${c.course}</b><br><small>${formatDateDisplay(c.date)}</small></span>
-                <span>${c.count} Players ></span>
-            </div>`).join('');
-    }
+  function renderDashboard() {
+    const s = document.getElementById('dashSeason').value;
+    const comps = rounds.filter(r => r.season === s).reduce((acc, r) => { 
+        const k = `${r.date}|${r.courseId}`; 
+        if (!acc[k]) acc[k] = { date: r.date, course: r.courseName, id: r.courseId, count: 0 }; 
+        acc[k].count++; 
+        return acc; 
+    }, {});
+   
+    document.getElementById('dash-list').innerHTML = Object.values(comps).map(c => `
+        <div class="item-row" onclick="viewDetail('${c.date}','${c.id}')">
+           <span><b>${c.course}</b><br><small>${formatDateDisplay(c.date)}</small></span>
+           <span>${c.count} Players ></span>
+        </div>`).join('');
+}
 
 function viewDetail(date, courseId) {
-    const filtered = rounds.filter(r => r.date === date && String(r.courseId) === String(courseId)).sort((a,b) => {
-    if (b.points !== a.points) return b.points - a.points;
-    // If points are equal, use the tie-breaker
-    return getTieBreaker(b.pointsArray) - getTieBreaker(a.pointsArray);
-});
+    // 1. Gather all saved rounds for this course and date
+    let filtered = rounds.filter(r => r.date === date && String(r.courseId) === String(courseId));
     
-    if(filtered.length === 0) return;
+    // 2. FIXED LIVE DETECTION: Look through the rounds array for any live strings matching this event
+    rounds.forEach(r => {
+        if (String(r.id).startsWith('live-') && r.date === date && String(r.courseId) === String(courseId)) {
+            // If this live round isn't already inside our filtered view list, add it
+            if (!filtered.some(f => String(f.id) === String(r.id))) {
+                filtered.push(r);
+            }
+        }
+    });
+
+    // 3. Sort them with highest points at the top, using your standard tie-breakers
+    filtered.sort((a, b) => {
+        if (b.points !== a.points) return b.points - a.points;
+        if (typeof getTieBreaker === "function") {
+            return getTieBreaker(b.pointsArray) - getTieBreaker(a.pointsArray);
+        }
+        return 0;
+    });
     
+    if (filtered.length === 0) return;
+    
+    // 4. Update the visual screen layout
     document.getElementById('dash-main-view').classList.add('hidden');
     document.getElementById('dash-detail').classList.remove('hidden');
     document.getElementById('detail-title').innerText = filtered[0].courseName;
@@ -1047,23 +1384,31 @@ function viewDetail(date, courseId) {
     document.getElementById('report-club-name').innerText = club.name;
     
     const rImg = document.getElementById('report-logo-img');
-    if(club.logo) { rImg.src = club.logo; rImg.style.display = 'inline-block'; }
+    if (club.logo) { rImg.src = club.logo; rImg.style.display = 'inline-block'; }
 
-    // Updated Table Body with Awards Column
+    // 5. Build the leaderboard table rows dynamically
     document.getElementById('detail-results').innerHTML = filtered.map((r, i) => {
         let awards = "";
         if (r.longDrive) awards += "🚀";
         if (r.nearPin) awards += "🎯";
         
+        // Track hole completion progress live on the screen!
+        let holeProgress = "Live Typing...";
+        if (r.lastHoleCompleted) {
+            holeProgress = r.lastHoleCompleted === 18 ? "Finished" : `Hole: ${r.lastHoleCompleted}`;
+        } else if (r.scores && r.scores.some(s => s > 0)) {
+            const lastHole = r.scores.reduce((max, s, idx) => s > 0 ? idx + 1 : max, 0);
+            holeProgress = lastHole === 18 ? "Finished" : `Hole: ${lastHole}`;
+        }
+        
         return `<tr>
-            <td>${i+1}</td>
-            <td>${r.playerName}</td>
-           <td style="color: ${getScoreColor(r.points)}; font-weight: bold;">${r.points}</td>
-            <td style="font-size:1.2em;">${awards}</td>
+           <td>${i + 1}</td>
+           <td><b>${r.playerName}</b><br><small style="color:#e67e22; font-weight:bold;">${holeProgress}</small></td>
+           <td style="font-weight:bold; color:#2c3e50;">${r.points}</td>
+           <td><span style="font-size:14px;">${awards}</span></td>
         </tr>`;
     }).join('');
 }
-
     function closeDetail() {
         document.getElementById('dash-main-view').classList.remove('hidden');
         document.getElementById('dash-detail').classList.add('hidden');
@@ -1270,33 +1615,21 @@ function saveRound() {
     
     if(!cId || !pId) return alert("Select course and player.");
     
-    // Find the course and player objects first
     const crs = courses.find(c => String(c.id) === String(cId));
     const plr = players.find(p => String(p.id) === String(pId));
     
-    // Safety check in case the course or player wasn't found
     if (!crs || !plr) return alert("Course or Player data missing in Registry.");
 
     const isoDate = parseDateInput(document.getElementById('rDate').value);
     const scs = Array.from(document.querySelectorAll('.round-scores-val')).map(i => parseInt(i.value) || 0);
 
-    // Calculate the points array
-const ptsArray = scs.map((s, i) => {
+    const ptsArray = scs.map((s, i) => {
         if(s <= 0) return 0;
-        
         const par = parseInt(crs.pars[i]) || 0;
-        const si = parseInt(crs.si[i]) || 0; // Force to Number
-       const hc = Math.round(parseFloat(plr.handicap)) || 0; // Round the decimal
-console.log("Player:", plr.name, "Raw HC:", plr.handicap, "Rounded HC:", hc); 
-        
-        // 1. Calculate strokes for this hole
-        // If handicap is 1, and si is 1: (0) + (1 >= 1 ? 1 : 0) = 1 stroke.
+        const si = parseInt(crs.si[i]) || 0; 
+        const hc = Math.round(parseFloat(plr.handicap)) || 0; 
         const allow = Math.floor(hc / 18) + (hc % 18 >= si ? 1 : 0);
-        
-        // 2. Calculate Net Score
         const netScore = s - allow;
-        
-        // 3. Stableford formula: Par - Net + 2 (cannot be less than 0)
         return Math.max(0, par - netScore + 2);
     });
 
@@ -1311,10 +1644,10 @@ console.log("Player:", plr.name, "Raw HC:", plr.handicap, "Rounded HC:", hc);
         playerName: plr.name,
         points: totalPts,
         scores: scs,
-        pointsArray: ptsArray, // This connects to your Team tab
+        pointsArray: ptsArray, 
         season: isoDate.split('-')[0],
-longDrive: document.getElementById('rLongDrive').value === "Yes",
-nearPin: document.getElementById('rNearPin').value === "Yes"
+        longDrive: document.getElementById('rLongDrive').value === "Yes",
+        nearPin: document.getElementById('rNearPin').value === "Yes"
     };
 
     if(id) {
@@ -1322,37 +1655,35 @@ nearPin: document.getElementById('rNearPin').value === "Yes"
     } else {
         rounds.push(r);
     }
-// // --- Society Handicap Adjustment ---
-// // Winner gets cut (-2), Last place gets a buffer (+1)
-// const allScores = rounds.filter(r => r.date === isoDate).sort((a,b) => b.points - a.points);
-// 
-// if (allScores.length >= 3) { // Only adjust if at least 3 players played
-//     const winnerId = allScores[0].playerId;
-//     const lastId = allScores[allScores.length - 1].playerId;
-// 
-//     players = players.map(p => {
-//         let newHC = parseFloat(p.handicap) || 0;
-//         if (p.id === winnerId) newHC -= 2.0; // Cut the winner
-//         if (p.id === lastId) newHC += 1.0;   // Help the last player
-//         
-//         return { ...p, handicap: newHC.toFixed(1) };
-//     });
-// }
-    // 1. Save the data to the memory
+
+    // 1. Save data locally and to Firebase Cloud immediately
     saveData();
 
-    // 2. Refresh all the screens so they show the new data
-    renderStats();     
+    // 2. Refresh screens locally
+    renderStats();  
     renderDashboard(); 
+    if (typeof calculateTeamResults === "function") calculateTeamResults();
+    if (typeof calculateDoublesResults === "function") calculateDoublesResults();
 
-    // 3. The "Eraser": Wipe the form clean for next time
+    // 3. Clear the form fields
     resetRoundForm();
 
-    // 4. Reset the box colors back to neutral
-    document.querySelectorAll('.round-scores-val').forEach(input => colorLive(input));
+    // 4. Reset box colors
+    document.querySelectorAll('.round-scores-val').forEach(input => {
+        if (typeof colorLive === "function") colorLive(input);
+    });
 
-    // 5. Tell the user it's done, then move to the Stats page
-    alert("Round Saved!");
+    // 5. Automatic lockdown back to player mode view
+    const modeSelect = document.getElementById('app-mode-select');
+    if (modeSelect) {
+        modeSelect.value = "player";
+        if (typeof toggleAppMode === 'function') {
+           toggleAppMode();
+        }
+    }
+
+    // 6. Alert user round is synced
+    alert("Round Saved to Cloud!");
     showTab('tab-stats');
 }
 
@@ -1377,32 +1708,38 @@ nearPin: document.getElementById('rNearPin').value === "Yes"
 
     function deleteRound(id) { if(confirm("Delete?")) { rounds = rounds.filter(x => String(x.id) !== String(id)); saveData(); renderStats(); renderDashboard(); } }
 
-    function resetRoundForm() {
-        document.getElementById('editRoundId').value = '';
-        document.querySelectorAll('.round-scores-val')
-.forEach(i => {
-    i.value = '';
-    i.style.color = '#333';
-});
-document.querySelectorAll('.round-scores-val')
-    .forEach(i => {
-        i.style.color = '#333';
-    });
 function resetRoundForm() {
+    // --- STEP 3 FIXED: Clear the live typing tracker ---
+    window.currentLiveRoundId = null; 
+
     // This clears the live scores and points displays when starting over
+    if (document.getElementById('editRoundId')) {
+        document.getElementById('editRoundId').value = '';
+    }
+    
     if (document.getElementById('live-total-gross')) {
         document.getElementById('live-total-gross').innerText = '0';
         document.getElementById('live-total-points').innerText = '0';
         document.querySelectorAll('.live-hole-pts').forEach(lbl => lbl.innerText = '0');
     }
-}
- document.getElementById('rLongDrive').value = 'No';
-document.getElementById('rNearPin').value = 'No';
-        const now = new Date();
-        document.getElementById('rDate').value = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`;
-        populateRoundSelectors();
-document.querySelectorAll('.round-scores-val')[0]?.focus();
+
+    document.querySelectorAll('.round-scores-val').forEach(i => {
+        i.value = '';
+        i.style.color = '#333';
+    });
+
+    if (document.getElementById('rLongDrive')) document.getElementById('rLongDrive').value = 'No';
+    if (document.getElementById('rNearPin')) document.getElementById('rNearPin').value = 'No';
+    
+    const now = new Date();
+    const dateInput = document.getElementById('rDate');
+    if (dateInput) {
+        dateInput.value = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`;
     }
+    
+    if (typeof populateRoundSelectors === "function") populateRoundSelectors();
+    document.querySelectorAll('.round-scores-val')[0]?.focus();
+}
 
     function savePlayer() {
         const id = document.getElementById('editPlayerId').value, p = { id: id || 'p' + Date.now(), name: document.getElementById('pName').value, handicap: document.getElementById('pHC').value };
@@ -1938,12 +2275,76 @@ function renderSavedDoubles() {
         if (typeof renderPlayers === "function") renderPlayers(); 
         if (typeof renderDashboard === "function") renderDashboard();
         
-        alert(message + "\nHandicaps updated and event locked successfully!");
+saveData();
+        if (typeof renderPlayers === "function") renderPlayers(); 
+        if (typeof renderDashboard === "function") renderDashboard();
+        
+        // Clean Trigger Rule: Only show the alert popup if an Admin is looking at the screen 
+        const viewSelector = document.getElementById('app-mode-select');
+        if (viewSelector && viewSelector.value === 'admin') {
+            alert(message + "\nHandicaps updated and event locked successfully!");
+        }
+
+        // Refresh detail view layout to visually gray out the button immediately
+        window.viewDetail(date, courseId);
+    }
         
         // Refresh detail view layout to visually gray out the button immediately
         window.viewDetail(date, courseId);
     }
+// Keep a live cloud connection open so everyone's leaderboard updates automatically!
+database.ref('golf_data/rounds').on('value', (snapshot) => {
+  const cloudRounds = snapshot.val();
+  if (cloudRounds) {
+    rounds = cloudRounds;
+    if (typeof updateLiveLeaderboard === 'function') {
+      updateLiveLeaderboard(); 
+    }
+    if (typeof renderStats === "function") renderStats();
+    if (typeof renderDashboard === "function") renderDashboard();
+  }
+});
 })();
+if (typeof database !== "undefined") {
+  database.ref('golf_data/rounds').on('value', (snapshot) => {
+    const remoteRounds = snapshot.val();
+    if (remoteRounds) {
+      // 1. Convert data cleanly into an array format
+      rounds = Array.isArray(remoteRounds) ? remoteRounds : Object.keys(remoteRounds).map(key => {
+          return typeof remoteRounds[key] === 'object' ? { id: key, ...remoteRounds[key] } : remoteRounds[key];
+      }).filter(Boolean);
+
+      // 2. FIXED: Re-run local calculations using cloud data before updating the screen!
+      if (typeof courses !== 'undefined' && typeof players !== 'undefined') {
+          const liveCourseSelect = document.getElementById('rCourse');
+          const livePlayerSelect = document.getElementById('rPlayer');
+          
+          if (liveCourseSelect && livePlayerSelect && liveCourseSelect.value && livePlayerSelect.value) {
+              // If you are actively typing a score on this device, don't overwrite your local entries
+              if (typeof calculateLiveStableford === 'function') calculateLiveStableford();
+          } else {
+              // If this device is just viewing, force-render the live leaderboard hands-free
+              if (typeof updateLiveLeaderboard === 'function') updateLiveLeaderboard();
+          }
+      }
+
+      // 3. Keep all other main interface tabs seamlessly refreshed
+      if (typeof renderDashboard === "function") renderDashboard();
+      if (typeof renderPlayers === "function") renderPlayers();
+      if (typeof renderStats === "function") renderStats();
+    }
+  });
+}
+// Dedicated background listener to force the live table to update hands-free 
+if (typeof database !== 'undefined') {
+    database.ref('golf_data/rounds').on('child_changed', () => {
+        const liveTable = document.getElementById('live-leaderboard-body');
+        // If the live leaderboard is visible on screen, force it to redraw immediately hands-free
+        if (liveTable && typeof updateLiveLeaderboard === 'function') {
+            updateLiveLeaderboard();
+        }
+    });
+}
 </script>
 </body>
 </html>
