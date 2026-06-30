@@ -664,9 +664,84 @@ function getTieBreaker(pointsArray) {
     }
 
 // --- UPGRADED CLOUD LOADING MECHANISM (LIVE UPDATES) ---
-// --- UPGRADED CLOUD LOADING MECHANISM (LIVE UPDATES) --- function loadData() { // Use .on('value') instead of .once() to keep an open, live data stream between all devices database.ref('golf_data/').on('value', (snapshot) => { const data = snapshot.val(); if (data) { // Only overwrite arrays if they actually exist in the incoming cloud packet! if (data.players) players = data.players; if (data.courses) courses = data.courses; if (data.rounds) rounds = data.rounds; if (data.pastComps) pastComps = data.pastComps; if (data.club) club = data.club; if (data.competitionTeams) competitionTeams = data.competitionTeams; if (data.pairsT) pairsT = data.pairsT; if (data.singlesT) singlesT = data.singlesT; } else { // Fallback: If cloud is completely empty, look for older local backups players = JSON.parse(localStorage.getItem('g_players')) || []; courses = JSON.parse(localStorage.getItem('g_courses')) || []; rounds = JSON.parse(localStorage.getItem('g_rounds')) || []; pastComps = JSON.parse(localStorage.getItem('g_pastComps')) || []; club = JSON.parse(localStorage.getItem('g_club')) || { name: "Golf Pro Manager", logo: "" }; competitionTeams = JSON.parse(localStorage.getItem('g_compTeams')) || []; pairsT = JSON.parse(localStorage.getItem('g_pairsT')) || []; singlesT = JSON.parse(localStorage.getItem('g_singlesT')) || []; } // Run all your standard layout and graphic functions safely on every update try { if (typeof renderActiveTeams === "function") renderActiveTeams(); } catch(e) { console.log("Team draw failed"); } try { if (typeof renderMatchplay === "function") { renderMatchplay('pairs'); renderMatchplay('singles'); } } catch(e) { console.log("Matchplay draw failed"); } try { const saved = localStorage.getItem('g_tempTeams'); if (saved) { tempTeams = JSON.parse(saved); if (typeof renderSavedDoubles === "function") renderSavedDoubles(); } else { tempTeams = []; } } catch(e) { console.log("Doubles draw failed"); } if (pairsT.length === 0 && typeof renderMatchplay === "function") { renderMatchplay('pairs'); } if (singlesT.length === 0 && typeof renderMatchplay === "function") { renderMatchplay('singles'); } // Automatically refresh all live screens whenever a change is synced setTimeout(() => { if (typeof updateLiveLeaderboard === "function") updateLiveLeaderboard(); if (typeof renderRegistry === "function") renderRegistry(); if (typeof renderStats === "function") renderStats(); if (typeof renderDashboard === "function") renderDashboard(); // Force the detailed sub-view leaderboard to refresh automatically if it is open const detailView = document.getElementById('dash-detail'); if (detailView && !detailView.classList.contains('hidden')) { const activeDate = document.getElementById('rDate')?.value || (rounds[0]?.date); const activeCourseId = document.getElementById('rCourse')?.value || (rounds[0]?.courseId); if (activeDate && activeCourseId && typeof viewDetail === "function") { viewDetail(activeDate, activeCourseId); } } }, 50); }, (err) => { console.error("Cloud data loading failed: ", err); }); 
-} 
+function loadData() {
+  // Use .on('value') instead of .once() to keep an open, live data stream between all devices
+  database.ref('golf_data/').on('value', (snapshot) => {
+    const data = snapshot.val();
+    
+    if (data) {
+      // Only overwrite arrays if they actually exist in the incoming cloud packet!
+      if (data.players) players = data.players;
+      if (data.courses) courses = data.courses;
+      if (data.rounds) rounds = data.rounds;
+      if (data.pastComps) pastComps = data.pastComps;
+      if (data.club) club = data.club;
+      if (data.competitionTeams) competitionTeams = data.competitionTeams;
+      if (data.pairsT) pairsT = data.pairsT;
+      if (data.singlesT) singlesT = data.singlesT;
+    } else {
+      // Fallback: If cloud is completely empty, look for older local backups
+      players = JSON.parse(localStorage.getItem('g_players')) || [];
+      courses = JSON.parse(localStorage.getItem('g_courses')) || [];
+      rounds = JSON.parse(localStorage.getItem('g_rounds')) || [];
+      pastComps = JSON.parse(localStorage.getItem('g_pastComps')) || [];
+      club = JSON.parse(localStorage.getItem('g_club')) || { name: "Golf Pro Manager", logo: "" };
+      competitionTeams = JSON.parse(localStorage.getItem('g_compTeams')) || [];
+      pairsT = JSON.parse(localStorage.getItem('g_pairsT')) || [];
+      singlesT = JSON.parse(localStorage.getItem('g_singlesT')) || [];
+    }
+    
+    // Run all your standard layout and graphic functions safely on every update
+    try { 
+        if (typeof renderActiveTeams === "function") renderActiveTeams(); 
+    } catch(e) { console.log("Team draw failed"); }
+    
+    try { 
+        if (typeof renderMatchplay === "function") {
+          renderMatchplay('pairs');
+          renderMatchplay('singles');
+        }
+    } catch(e) { console.log("Matchplay draw failed"); }
 
+    try {
+        const saved = localStorage.getItem('g_tempTeams');
+        if (saved) {
+            tempTeams = JSON.parse(saved);
+            if (typeof renderSavedDoubles === "function") renderSavedDoubles(); 
+        } else {
+            tempTeams = [];
+        }
+    } catch(e) { console.log("Doubles draw failed"); }
+
+    if (pairsT.length === 0 && typeof renderMatchplay === "function") {
+      renderMatchplay('pairs');
+    }
+    if (singlesT.length === 0 && typeof renderMatchplay === "function") {
+      renderMatchplay('singles');
+    }
+
+    // Automatically refresh all live screens whenever a change is synced
+    setTimeout(() => {
+        if (typeof updateLiveLeaderboard === "function") updateLiveLeaderboard();
+        if (typeof renderRegistry === "function") renderRegistry();
+        if (typeof renderStats === "function") renderStats();
+        if (typeof renderDashboard === "function") renderDashboard();
+        
+        // Force the detailed sub-view leaderboard to refresh automatically if it is open
+        const detailView = document.getElementById('dash-detail');
+        if (detailView && !detailView.classList.contains('hidden')) {
+            const activeDate = document.getElementById('rDate')?.value || (rounds[0]?.date);
+            const activeCourseId = document.getElementById('rCourse')?.value || (rounds[0]?.courseId);
+            if (activeDate && activeCourseId && typeof viewDetail === "function") {
+                viewDetail(activeDate, activeCourseId);
+            }
+        }
+    }, 50);
+
+  }, (err) => {
+      console.error("Cloud data loading failed: ", err);
+  });
+}
 function saveGolfApiKey() {
    const keyField = document.getElementById('golfApiKey');
    if (keyField) {
@@ -2258,18 +2333,29 @@ if (typeof database !== "undefined") {
     }
   });
 }
-// Dedicated background listener to force the live table to update hands-free 
-if (typeof database !== 'undefined') {
-    database.ref('golf_data/rounds').on('child_changed', () => {
-        const liveTable = document.getElementById('live-leaderboard-body');
-        // If the live leaderboard is visible on screen, force it to redraw immediately hands-free
-        if (liveTable && typeof updateLiveLeaderboard === 'function') {
-            updateLiveLeaderboard();
-        }
-    });
+// --- ADD THESE LISTENERS AT THE END OF YOUR SCRIPT ---
+// Listen specifically for changes to rounds to update leaderboard instantly
+if (typeof database !== "undefined") {
+  database.ref('golf_data/rounds').on('value', (snapshot) => {
+    const remoteRounds = snapshot.val();
+    if (remoteRounds) {
+      // Convert Firebase object to array if needed
+      rounds = Array.isArray(remoteRounds) 
+        ? remoteRounds 
+        : Object.keys(remoteRounds).map(key => ({ id: key, ...remoteRounds[key] }));
+
+      // Update all views
+      if (typeof updateLiveLeaderboard === "function") updateLiveLeaderboard();
+      if (typeof renderDashboard === "function") renderDashboard();
+      if (typeof renderStats === "function") renderStats();
+    }
+  });
+
+  // Also listen for single changes to update faster
+  database.ref('golf_data/rounds').on('child_changed', () => {
+    if (typeof updateLiveLeaderboard === "function") updateLiveLeaderboard();
+  });
 }
-// --- ADD THESE LISTENERS AT THE END OF YOUR SCRIPT --- // Listen specifically for changes to rounds to update leaderboard instantly if (typeof database !== "undefined") { database.ref('golf_data/rounds').on('value', (snapshot) => { const remoteRounds = snapshot.val(); if (remoteRounds) { // Convert Firebase object to array if needed rounds = Array.isArray(remoteRounds) ? remoteRounds : Object.keys(remoteRounds).map(key => ({ id: key, ...remoteRounds[key] })); // Update all views if (typeof updateLiveLeaderboard === "function") updateLiveLeaderboard(); if (typeof renderDashboard === "function") renderDashboard(); if (typeof renderStats === "function") renderStats(); } }); // Also listen for single changes to update faster database.ref('golf_data/rounds').on('child_changed', () => { if (typeof updateLiveLeaderboard === "function") updateLiveLeaderboard(); });
- } 
 </script>
 </body>
 </html>
