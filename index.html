@@ -676,6 +676,7 @@ function loadData() {
       if (data.rounds) rounds = data.rounds;
       if (data.pastComps) pastComps = data.pastComps;
       if (data.club) club = data.club;
+      if (club && club.name) { document.getElementById('header-club-name').innerText =      club.name; 
       if (data.competitionTeams) competitionTeams = data.competitionTeams;
       if (data.pairsT) pairsT = data.pairsT;
       if (data.singlesT) singlesT = data.singlesT;
@@ -1196,7 +1197,7 @@ function showTab(id) {
 
   // SAFETY SECURE LOCK: If in Player Mode, block access to any tab except "Enter Score"
   if (currentMode === 'player' && id !== 'tab-comp') {
-    alert("To continue - please click OK and select ENTER SCORE.");
+    alert("To continue – please click OK and select ENTER SCORE.");
     // Keep the "Enter Score" tab button looking highlighted
     document.querySelectorAll('.nav button').forEach(b => b.classList.remove('active'));
     const compBtn = document.getElementById('btn-comp');
@@ -1294,12 +1295,29 @@ const yards =
         ).join('');
 }
 
-    function saveClubProfile() {
-        club.name = document.getElementById('setupClubName').value;
-        saveData();
-        applyClubProfile();
-        alert("Profile Updated!");
+function saveClubProfile() {
+    // 1. Grab what you typed into the box
+    const newName = document.getElementById('setupClubName').value.trim();
+
+    if (newName) {
+        // 2. Update the local variable with the new name
+        club.name = newName;
+
+        // 3. Send it directly to Google Firebase so it saves forever!
+        database.ref('golf_data/club').set(club)
+            .then(() => {
+                alert('Club Profile Saved successfully to Firebase!');
+                // 4. Update the text at the top of your screen immediately
+                document.getElementById('header-club-name').innerText = newName;
+            })
+            .catch((error) => {
+                console.error("Firebase save error: ", error);
+                alert('Oops, something went wrong saving to Firebase.');
+            });
+    } else {
+        alert('Please enter a Club Name first!');
     }
+}
 
     function processLogo(input) {
         if (input.files && input.files[0]) {
