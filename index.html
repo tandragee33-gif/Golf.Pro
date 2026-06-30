@@ -2364,6 +2364,16 @@ if (typeof database !== "undefined") {
     }
   });
 }
+// Dedicated background listener to force the live table to update hands-free 
+if (typeof database !== 'undefined') {
+    database.ref('golf_data/rounds').on('child_changed', () => {
+        const liveTable = document.getElementById('live-leaderboard-body');
+        // If the live leaderboard is visible on screen, force it to redraw immediately hands-free
+        if (liveTable && typeof updateLiveLeaderboard === 'function') {
+            updateLiveLeaderboard();
+        }
+    });
+}
 </script>
 </body>
 </html>
