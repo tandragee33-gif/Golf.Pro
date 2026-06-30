@@ -479,31 +479,36 @@ function updateLiveLeaderboard() {
    const tbody = document.getElementById('live-leaderboard-body');
    if (!tbody) return;
 
-   let currentDateInput = document.getElementById('rDate') ? document.getElementById('rDate').value : '';
-
-   // FIXED: Properly convert dd/mm/yyyy strings so JavaScript can sort them cleanly hands-free
-   if (!currentDateInput && typeof rounds !== 'undefined' && rounds.length > 0) {
+   // 1. Establish the target date we want to look at
+   let targetDate = document.getElementById('rDate') ? document.getElementById('rDate').value : '';
+   
+   // If local date input is completely blank, safely find the most recent date available in the cloud data
+   if (!targetDate && typeof rounds !== 'undefined' && rounds.length > 0) {
        const sortedRounds = [...rounds].sort((a, b) => {
            const dateA = a.date ? new Date(a.date.split('/').reverse().join('-')) : new Date(0);
            const dateB = b.date ? new Date(b.date.split('/').reverse().join('-')) : new Date(0);
            return dateB - dateA;
        });
        if (sortedRounds[0] && sortedRounds[0].date) {
-           currentDateInput = sortedRounds[0].date;
+           targetDate = sortedRounds[0].date;
        }
    }
 
-   if (!currentDateInput) {
+   // If there is still no date context at all, show a clean fallback row and stop
+   if (!targetDate) {
        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#888;">No scores saved for today yet.</td></tr>';
        return;
    }
 
-   // 1. Get already saved rounds for today
-   let activeRounds = rounds.filter(r => {
-       return r.date === currentDateInput || (typeof formatDateDisplay === 'function' && formatDateDisplay(r.date) === currentDateInput);
-   });
+   // 2. Build our base array using cloud records that match this date
+   let displayPool = [];
+   if (typeof rounds !== 'undefined' && Array.isArray(rounds)) {
+       displayPool = rounds.filter(r => {
+           return r && (r.date === targetDate || (typeof formatDateDisplay === 'function' && formatDateDisplay(r.date) === targetDate));
+       });
+   }
 
-   // 2. Safely grab what's currently being typed on the screen right now
+   // 3. Check if this specific device is actively typing a scorecard right now
    const liveCourseId = document.getElementById('rCourse') ? document.getElementById('rCourse').value : '';
    const livePlayerId = document.getElementById('rPlayer') ? document.getElementById('rPlayer').value : '';
    const livePointsText = document.getElementById('live-total-points') ? document.getElementById('live-total-points').innerText : '0';
@@ -512,51 +517,54 @@ function updateLiveLeaderboard() {
    const livePoints = parseInt(livePointsText) || 0;
    const liveGross = parseInt(liveGrossText) || 0;
 
+   // If you have a player selected and have scored something, inject your live local session
    if (liveCourseId && livePlayerId && (liveGross > 0 || livePoints > 0)) {
-       const courseObj = courses.find(c => String(c.id) === String(liveCourseId));
-       const playerObj = players.find(p => String(p.id) === String(livePlayerId));
-
-       // Remove old saved entry for this specific player to prevent duplicate lines on screen
-       activeRounds = activeRounds.filter(r => String(r.playerId) !== String(livePlayerId));
-
-       // Inject their active live session into the display pool
-       activeRounds.push({
+       // Filter out any older saved version of yourself to prevent duplicate rows for the same player
+       displayPool = displayPool.filter(r => r && String(r.playerId) !== String(livePlayerId));
+       
+       // Append your un-saved local input data safely to the view array
+       displayPool.push({
            playerId: livePlayerId,
            courseId: liveCourseId,
            totalGross: liveGross,
            points: livePoints,
-           isLive: true
+           isLocalTyping: true
        });
    }
 
-   // Sort by Stableford points descending
-   activeRounds.sort((a, b) => (b.points || 0) - (a.points || 0));
+   // 4. Sort the entire pool by Stableford points descending
+   displayPool.sort((a, b) => (b.points || 0) - (a.points || 0));
 
-   // Render rows into the table
-   if (activeRounds.length === 0) {
+   // 5. Render the table rows dynamically using local array definitions for names
+   if (displayPool.length === 0) {
        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#888;">No scores saved for today yet.</td></tr>';
    } else {
-       tbody.innerHTML = activeRounds.map((r, index) => {
-           // FIXED: Match names dynamically using global arrays if the round object doesn't have them explicitly set yet
+       tbody.innerHTML = displayPool.map((r, index) => {
+           if (!r) return '';
+
+           // Dynamic lookup for names against your global registries so nothing reads as "Unknown"
            let pName = r.playerName;
            let cName = r.courseName;
-           
+
            if (!pName && typeof players !== 'undefined') {
-               const pMatch = players.find(p => String(p.id) === String(r.playerId));
+               const pMatch = players.find(p => p && String(p.id) === String(r.playerId));
                pName = pMatch ? pMatch.name : 'Unknown Player';
            }
            if (!cName && typeof courses !== 'undefined') {
-               const cMatch = courses.find(c => String(c.id) === String(r.courseId));
+               const cMatch = courses.find(c => c && String(c.id) === String(r.courseId));
                cName = cMatch ? cMatch.name : 'Unknown Course';
            }
 
-           const styleAttr = r.isLive ? 'style="color: var(--success); font-weight: bold; background-color: #f9fff9;"' : '';
-           const liveBadge = r.isLive ? ' <span style="font-size: 9px; padding: 2px 4px; background: var(--success); color: white; border-radius: 4px; margin-left: 4px;">TYPING</span>' : '';
-           
+           // Check if this specific row is a live session (typed elsewhere or typed locally here)
+           const isRowLive = r.isLive || r.isLocalTyping || (r.id && String(r.id).startsWith('live-'));
+
+           const styleAttr = isRowLive ? 'style="color: var(--success); font-weight: bold; background-color: #f9fff9;"' : '';
+           const liveBadge = isRowLive ? ' <span style="font-size: 9px; padding: 2px 4px; background: var(--success); color: white; border-radius: 4px; margin-left: 4px;">TYPING</span>' : '';
+
            return `<tr ${styleAttr}>
                <td>${index + 1}</td>
-               <td>${pName || 'Unknown'}${liveBadge}</td>
-               <td>${cName || 'Unknown'}</td>
+               <td>${pName}${liveBadge}</td>
+               <td>${cName}</td>
                <td>${r.totalGross || 0}</td>
                <td>${r.points || 0}</td>
            </tr>`;
