@@ -2308,26 +2308,14 @@ if (typeof database !== "undefined") {
     database.ref('golf_data/rounds').on('value', (snapshot) => {
         const remoteRounds = snapshot.val();
         if (remoteRounds) {
-            // 1. Convert data cleanly into an array format
+            // 1. Convert data cleanly into an array format and update global variable
             rounds = Array.isArray(remoteRounds) ? remoteRounds : Object.keys(remoteRounds).map(key => {
                 return typeof remoteRounds[key] === 'object' ? { id: key, ...remoteRounds[key] } : remoteRounds[key];
             }).filter(Boolean);
 
-            // 2. Safely update screens depending on whether someone is typing on this device
-            if (typeof courses !== 'undefined' && typeof players !== 'undefined') {
-                const liveCourseSelect = document.getElementById('rCourse');
-                const livePlayerSelect = document.getElementById('rPlayer');
-                
-                if (liveCourseSelect && livePlayerSelect && liveCourseSelect.value && livePlayerSelect.value) {
-                    // This device is actively entering a score: protect their input box
-                    if (typeof calculateLiveStableford === 'function') calculateLiveStableford();
-                } else {
-                    // This device is just viewing (like a clubhouse monitor or a spectator): refresh instantly
-                    if (typeof updateLiveLeaderboard === 'function') updateLiveLeaderboard();
-                }
-            } else {
-                // Fallback: If elements aren't loaded, update the leaderboard anyway
-                if (typeof updateLiveLeaderboard === 'function') updateLiveLeaderboard();
+            // 2. ALWAYS force-render the leaderboard UI so other devices refresh hands-free immediately!
+            if (typeof updateLiveLeaderboard === 'function') {
+                updateLiveLeaderboard();
             }
 
             // 3. Keep all other interface views synchronized
@@ -2339,11 +2327,7 @@ if (typeof database !== "undefined") {
 
     // Fast-track trigger for instant individual row updates
     database.ref('golf_data/rounds').on('child_changed', () => {
-        const liveCourseSelect = document.getElementById('rCourse');
-        const livePlayerSelect = document.getElementById('rPlayer');
-        const isTyping = liveCourseSelect && livePlayerSelect && liveCourseSelect.value && livePlayerSelect.value;
-        
-        if (!isTyping && typeof updateLiveLeaderboard === "function") {
+        if (typeof updateLiveLeaderboard === "function") {
             updateLiveLeaderboard();
         }
     });
