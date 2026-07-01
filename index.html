@@ -2357,14 +2357,18 @@ if (typeof database !== "undefined") {
             // 1. Instantly pull down fresh data into your local app memory
             rounds = Array.isArray(cloudRounds) ? cloudRounds : Object.values(cloudRounds);
 
-            // 2. REFRESH LIVE SCORING LAYOUTS:
-            // Force the active live typing leaderboard to redraw itself instantly
+            // 2. FORCE INPUT BOXES TO UPDATE LIVE:
+            // This is the missing piece! It forces the score entry screen to pull the newest cloud numbers into the boxes.
+            if (typeof updateScorecardFromHistory === "function") {
+                updateScorecardFromHistory();
+            }
+
+            // 3. REFRESH LIVE SCORING LAYOUTS:
             if (typeof updateLiveLeaderboard === "function") {
                 updateLiveLeaderboard();
             }
 
-            // 3. REFRESH HISTORY DETAIL LAYOUTS:
-            // If Device 2 is sitting on the history leaderboard page, force it to redraw the numbers live
+            // 4. REFRESH HISTORY DETAIL LAYOUTS:
             const detailView = document.getElementById('dash-detail');
             if (detailView && !detailView.classList.contains('hidden') && window.currentActiveDate && window.currentActiveCourseId) {
                 if (typeof viewDetail === "function") {
@@ -2372,7 +2376,7 @@ if (typeof database !== "undefined") {
                 }
             }
 
-            // 4. Update background views
+            // 5. Update background views
             if (typeof renderDashboard === "function") renderDashboard();
             if (typeof renderStats === "function") renderStats();
         }
