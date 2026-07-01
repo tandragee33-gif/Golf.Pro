@@ -1553,6 +1553,22 @@ function saveTournamentRecord(type, winner) {
 localStorage.setItem('g_tempTeams', JSON.stringify(tempTeams));
     }
 
+function updateScorecardFromHistory() {
+    const matchDate = document.getElementById('dbDate').value;
+    if (!matchDate || tempTeams.length === 0) return;
+
+    tempTeams.forEach((t, idx) => {
+        const p1Inputs = document.querySelectorAll(`.db-p1[data-idx="${idx}"]`);
+        const p2Inputs = document.querySelectorAll(`.db-p2[data-idx="${idx}"]`);
+
+        // Match against your global rounds database
+        const p1Round = rounds.find(r => String(r.playerId) === String(t.p1.id) && r.date === matchDate);
+        const p2Round = rounds.find(r => String(r.playerId) === String(t.p2.id) && r.date === matchDate);
+
+        if (p1Round && p1Inputs.length > 0) p1Inputs[0].value = p1Round.points || 0;
+        if (p2Round && p2Inputs.length > 0) p2Inputs[0].value = p2Round.points || 0;
+    });
+}
     function calculateDoublesResults() {
         const results = tempTeams.map((t, idx) => {
             const p1 = parseInt(document.querySelectorAll('.db-p1')[idx].value) || 0, p2 = parseInt(document.querySelectorAll('.db-p2')[idx].value) || 0;
@@ -1583,6 +1599,12 @@ function resetDoublesSelection() {
     showDbStep1(); 
 }
 
+function showDbStep1() {
+    document.getElementById('db-step1').classList.remove('hidden');
+    document.getElementById('db-step2').classList.add('hidden');
+    document.getElementById('btnPrintDb').classList.add('hidden');
+    renderDoublesSelector();
+}
    function renderPastComps() {
         const list = document.getElementById('past-tourney-list');
         if(pastComps.length === 0) {
