@@ -1200,15 +1200,11 @@ function showTab(id) {
   const modeSelect = document.getElementById('app-mode-select');
   const currentMode = modeSelect ? modeSelect.value : 'admin';
 
-  // SAFETY SECURE LOCK: If in Player Mode, block access to any tab except "Enter Score"
-  if (currentMode === 'player' && id !== 'tab-comp') {
-    alert("To continue – please click OK and select ENTER SCORE.");
-    // Keep the "Enter Score" tab button looking highlighted
-    document.querySelectorAll('.nav button').forEach(b => b.classList.remove('active'));
-    const compBtn = document.getElementById('btn-comp');
-    if (compBtn) compBtn.classList.add('active');
-    return; // Force stop right here
-  }
+// SAFETY SECURE LOCK: Allow players to see BOTH history and enter score tabs, but block the rest!
+if (currentMode === 'player' && id !== 'tab-comp' && id !== 'tab-dash') {
+  alert("Access restricted. This page is only available in Admin Mode.");
+  return; // Force stop right here
+}
 
   // Your original tab switching actions
   document.querySelectorAll('.tab-content').forEach(t => t.classList.add('hidden'));
