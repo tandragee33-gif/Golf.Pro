@@ -2353,14 +2353,27 @@ if (typeof database !== "undefined") {
     database.ref('golf_data/rounds').on('value', (snapshot) => {
         const cloudRounds = snapshot.val();
         if (cloudRounds) {
-            // 1. Pull the fresh data down from the cloud instantly
-            // Convert Firebase object data back into your local array format
-            rounds = Object.values(cloudRounds);
+            // 1. Safely pull fresh data down into your array
+            rounds = Array.isArray(cloudRounds) ? cloudRounds : Object.values(cloudRounds);
 
-            // 2. Refresh ALL screens completely hands-free!
+            // 2. Refresh standard background views
             if (typeof updateLiveLeaderboard === "function") updateLiveLeaderboard();
             if (typeof renderDashboard === "function") renderDashboard();
             if (typeof renderStats === "function") renderStats();
+
+            // 3. AUTOMATIC DETAIL REFRESH: If a player is actively viewing a leaderboard, redraw it live!
+            const detailView = document.getElementById('dash-detail');
+            if (detailView && !detailView.classList.contains('hidden')) {
+                const currentCourseName = document.getElementById('detail-title')?.innerText;
+                const currentDisplayDate = document.getElementById('detail-date')?.innerText;
+
+                // Find a matching round in the fresh data to figure out the exact date and course ID
+                const activeRound = rounds.find(r => r.courseName === currentCourseName);
+                if (activeRound) {
+                    // Force the detailed leaderboard to rewrite itself on screen instantly
+                    viewDetail(activeRound.date, activeRound.courseId);
+                }
+            }
         }
     });
 }
