@@ -2350,23 +2350,31 @@ if (typeof database !== "undefined") {
         }
     });
 
-// REAL-TIME CLOUD ENGINE: Listen for any changes to your rounds
+// REAL-TIME CLOUD ENGINE: Listen for any score entry or live updates across ALL devices
     database.ref('golf_data/rounds').on('value', (snapshot) => {
         const cloudRounds = snapshot.val();
         if (cloudRounds) {
-            // 1. Pull the fresh data down from the cloud instantly
+            // 1. Instantly pull down fresh data into your local app memory
             rounds = Array.isArray(cloudRounds) ? cloudRounds : Object.values(cloudRounds);
 
-            // 2. Refresh standard background screens
-            if (typeof updateLiveLeaderboard === "function") updateLiveLeaderboard();
-            if (typeof renderDashboard === "function") renderDashboard();
-            if (typeof renderStats === "function") renderStats();
+            // 2. REFRESH LIVE SCORING LAYOUTS:
+            // Force the active live typing leaderboard to redraw itself instantly
+            if (typeof updateLiveLeaderboard === "function") {
+                updateLiveLeaderboard();
+            }
 
-            // 3. FLUID LIVE REFRESH: If this device is looking at a detailed leaderboard, redraw it instantly!
+            // 3. REFRESH HISTORY DETAIL LAYOUTS:
+            // If Device 2 is sitting on the history leaderboard page, force it to redraw the numbers live
             const detailView = document.getElementById('dash-detail');
             if (detailView && !detailView.classList.contains('hidden') && window.currentActiveDate && window.currentActiveCourseId) {
-                viewDetail(window.currentActiveDate, window.currentActiveCourseId);
+                if (typeof viewDetail === "function") {
+                    viewDetail(window.currentActiveDate, window.currentActiveCourseId);
+                }
             }
+
+            // 4. Update background views
+            if (typeof renderDashboard === "function") renderDashboard();
+            if (typeof renderStats === "function") renderStats();
         }
     });
 }
