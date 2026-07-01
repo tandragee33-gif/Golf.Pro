@@ -1554,16 +1554,19 @@ localStorage.setItem('g_tempTeams', JSON.stringify(tempTeams));
     }
 
 function updateScorecardFromHistory() {
-    const matchDate = document.getElementById('dbDate').value;
+    const matchDate = document.getElementById('dbDate').value; // e.g., "2026-07-01"
     if (!matchDate || tempTeams.length === 0) return;
+
+    // Convert the input date to the slash format (e.g., "01/07/2026")
+    const formattedMatchDate = formatDateDisplay(matchDate);
 
     tempTeams.forEach((t, idx) => {
         const p1Inputs = document.querySelectorAll(`.db-p1[data-idx="${idx}"]`);
         const p2Inputs = document.querySelectorAll(`.db-p2[data-idx="${idx}"]`);
 
-        // Match against your global rounds database
-        const p1Round = rounds.find(r => String(r.playerId) === String(t.p1.id) && r.date === matchDate);
-        const p2Round = rounds.find(r => String(r.playerId) === String(t.p2.id) && r.date === matchDate);
+        // FIX: This now checks BOTH formats so it never misses a match!
+        const p1Round = rounds.find(r => String(r.playerId) === String(t.p1.id) && (r.date === matchDate || r.date === formattedMatchDate));
+        const p2Round = rounds.find(r => String(r.playerId) === String(t.p2.id) && (r.date === matchDate || r.date === formattedMatchDate));
 
         if (p1Round && p1Inputs.length > 0) p1Inputs[0].value = p1Round.points || 0;
         if (p2Round && p2Inputs.length > 0) p2Inputs[0].value = p2Round.points || 0;
