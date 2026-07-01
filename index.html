@@ -1538,20 +1538,39 @@ function saveTournamentRecord(type, winner) {
         document.getElementById('doubles-selector').innerHTML = players.map(p => `<div class="selector-item"><label for="db-${p.id}">${p.name}</label><input type="checkbox" class="db-ck" id="db-${p.id}" value="${p.id}"></div>`).join('');
     }
 
-    function setupDoublesTeams() {
-        const ids = Array.from(document.querySelectorAll('.db-ck:checked')).map(i => i.value);
-        if(ids.length < 2 || ids.length % 2 !== 0) return alert("Select an even number of players.");
-        const shuf = ids.sort(() => 0.5 - Math.random());
-        tempTeams = [];
-        for(let i=0; i < shuf.length; i+=2) tempTeams.push({ p1: players.find(p=>p.id==shuf[i]), p2: players.find(p=>p.id==shuf[i+1]) });
-        document.getElementById('doubles-scorecards').innerHTML = tempTeams.map((t, idx) => `
-            <div class="team-box"><div class="item-row"><b>Team ${idx+1}</b></div>
-            <div class="item-row"><span>${t.p1.name}</span> <input type="number" class="pts-input db-p1" data-id="${t.p1.id}" data-idx="${idx}" placeholder="Pts"></div>
-            <div class="item-row"><span>${t.p2.name}</span> <input type="number" class="pts-input db-p2" data-id="${t.p2.id}" data-idx="${idx}" placeholder="Pts"></div></div>`).join('');
-        document.getElementById('db-step1').classList.add('hidden'); document.getElementById('db-step2').classList.remove('hidden');
-        updateScorecardFromHistory();
-localStorage.setItem('g_tempTeams', JSON.stringify(tempTeams));
+function setupDoublesTeams() {
+    const ids = Array.from(document.querySelectorAll('.db-ck:checked')).map(i => i.value);
+   
+    if(ids.length < 2 || ids.length % 2 !== 0) return alert("Select an even number of players.");
+    const shuf = ids.sort(() => 0.5 - Math.random());
+    tempTeams = [];
+    for(let i=0; i < shuf.length; i+=2) {
+        tempTeams.push({ 
+            p1: players.find(p=>p.id==shuf[i]), 
+            p2: players.find(p=>p.id==shuf[i+1]) 
+        });
     }
+   
+    document.getElementById('doubles-scorecards').innerHTML = tempTeams.map((t, idx) => `
+        <div class="team-box">
+            <div class="item-row"><b>Team ${idx+1}</b></div>
+            <div class="item-row">
+                <span>${t.p1.name}</span>
+                <input type="number" class="pts-input db-p1" data-id="${t.p1.id}" data-idx="${idx}" placeholder="Pts" oninput="saveData()">
+            </div>
+            <div class="item-row">
+                <span>${t.p2.name}</span>
+                <input type="number" class="pts-input db-p2" data-id="${t.p2.id}" data-idx="${idx}" placeholder="Pts" oninput="saveData()">
+            </div>
+        </div>
+    `).join('');
+   
+    document.getElementById('db-step1').classList.add('hidden');
+    document.getElementById('db-step2').classList.remove('hidden');
+   
+    updateScorecardFromHistory();
+    localStorage.setItem('g_tempTeams', JSON.stringify(tempTeams));
+}
 
 function updateScorecardFromHistory() {
     const matchDate = document.getElementById('dbDate').value; // e.g., "2026-07-01"
