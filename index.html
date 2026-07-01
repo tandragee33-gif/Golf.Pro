@@ -1613,15 +1613,20 @@ function resetDoublesSelection() {
         `).join('');
     }
 
-    function deletePastComp(id) { if(confirm("Delete?")) { pastComps = pastComps.filter(c => c.id !== id); saveData(); renderPastComps(); } }
-
-    function updateScorecardFromHistory() {
-        const targetDate = parseDateInput(document.getElementById('dbDate').value);
-        document.querySelectorAll('.pts-input').forEach(input => {
-            const pid = input.getAttribute('data-id'), round = rounds.find(r => r.date === targetDate && String(r.playerId) === String(pid));
-            if(round) input.value = round.points;
-        });
-    }
+function deletePastComp(id) { 
+    // 1. If in player mode, block them immediately
+    if (document.getElementById('app-mode-select')?.value === 'player') {
+        alert("Action denied. You must be an Admin to delete tournament titles.");
+        return; // Stop right here
+    } 
+    
+    // 2. Otherwise, let admins delete as normal
+    if(confirm("Delete?")) { 
+        pastComps = pastComps.filter(c => c.id !== id); 
+        saveData(); 
+        renderPastComps(); 
+    } 
+}
 
     function showDbStep1() { document.getElementById('db-step1').classList.remove('hidden'); document.getElementById('db-step2').classList.add('hidden'); document.getElementById('btnPrintDb').classList.add('hidden'); }
 
