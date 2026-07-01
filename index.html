@@ -2349,10 +2349,18 @@ if (typeof database !== "undefined") {
         }
     });
 
-    // Fast-track trigger for instant individual row updates
-    database.ref('golf_data/rounds').on('child_changed', () => {
-        if (typeof updateLiveLeaderboard === "function") {
-            updateLiveLeaderboard();
+// REAL-TIME CLOUD ENGINE: Listen for any changes to your rounds
+    database.ref('golf_data/rounds').on('value', (snapshot) => {
+        const cloudRounds = snapshot.val();
+        if (cloudRounds) {
+            // 1. Pull the fresh data down from the cloud instantly
+            // Convert Firebase object data back into your local array format
+            rounds = Object.values(cloudRounds);
+
+            // 2. Refresh ALL screens completely hands-free!
+            if (typeof updateLiveLeaderboard === "function") updateLiveLeaderboard();
+            if (typeof renderDashboard === "function") renderDashboard();
+            if (typeof renderStats === "function") renderStats();
         }
     });
 }
