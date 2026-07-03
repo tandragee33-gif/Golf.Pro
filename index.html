@@ -1789,7 +1789,7 @@ function saveRound() {
 
     function editRound(id) {
         const r = rounds.find(x => String(x.id) === String(id));
-        showTab('tab-dash');
+        showTab('tab-comp');
         document.getElementById('editRoundId').value = r.id;
         document.getElementById('rDate').value = formatDateDisplay(r.date);
         document.getElementById('rCourse').value = r.courseId;
