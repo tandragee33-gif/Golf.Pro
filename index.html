@@ -719,11 +719,13 @@ if (data.club) {
         }
     } catch(e) { console.log("Doubles draw failed"); }
 
-    if (pairsT.length === 0 && typeof renderMatchplay === "function") {
-      renderMatchplay('pairs');
+// Safe length checks that won't crash the console
+    if ((Array.isArray(pairsT) ? pairsT.length === 0 : (!pairsT || !pairsT.rounds || pairsT.rounds.length === 0)) && typeof renderMatchplay === "function") {
+       renderMatchplay('pairs');
     }
-    if (singlesT.length === 0 && typeof renderMatchplay === "function") {
-      renderMatchplay('singles');
+    
+    if ((Array.isArray(singlesT) ? singlesT.length === 0 : (!singlesT || !singlesT.rounds || singlesT.rounds.length === 0)) && typeof renderMatchplay === "function") {
+       renderMatchplay('singles');
     }
 
     // Automatically refresh all live screens whenever a change is synced
