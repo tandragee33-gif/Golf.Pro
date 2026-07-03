@@ -1200,11 +1200,11 @@ function showTab(id) {
   const modeSelect = document.getElementById('app-mode-select');
   const currentMode = modeSelect ? modeSelect.value : 'admin';
 
-// SAFETY SECURE LOCK: Allow players to see BOTH history and enter score tabs, but block the rest!
-if (currentMode === 'player' && id !== 'tab-comp' && id !== 'tab-dash') {
-  alert("Access restricted. This page is only available in Admin Mode.");
-  return; // Force stop right here
-}
+  // SAFETY SECURE LOCK: Allow players to see BOTH history and enter score tabs, but block the rest!
+  if (currentMode === 'player' && id !== 'tab-comp' && id !== 'tab-dash') {
+    alert("Access restricted. This page is only available in Admin Mode.");
+    return; // Force stop right here
+  }
 
   // Your original tab switching actions
   document.querySelectorAll('.tab-content').forEach(t => t.classList.add('hidden'));
@@ -1221,7 +1221,15 @@ if (currentMode === 'player' && id !== 'tab-comp' && id !== 'tab-dash') {
   // CHANGED THIS LINE TO TRIGGER THE LEADERBOARD DRAW IMMEDIATELY
   if(id === 'tab-comp') { populateRoundSelectors(); if (typeof updateLiveLeaderboard === 'function') updateLiveLeaderboard(); }
   
-  if(id === 'tab-doubles') { renderDoublesSelector(); const now = new Date(); document.getElementById('dbDate').value = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`; }
+  if(id === 'tab-doubles') { 
+    renderDoublesSelector(); 
+    const now = new Date();
+    document.getElementById('dbDate').value = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`; 
+    
+    // STEP 2 ADDED HERE: Force Device 2 to check for fresh cloud live scores!
+    updateScorecardFromHistory(); 
+  }
+  
   if(id === 'tab-pairs' || id === 'tab-singles') renderMatchplay(id.split('-')[1]);
 }
 function populateRoundSelectors() {
@@ -1573,22 +1581,27 @@ function setupDoublesTeams() {
 }
 
 function updateScorecardFromHistory() {
-    const matchDate = document.getElementById('dbDate').value; // e.g., "2026-07-01"
+    const matchDate = document.getElementById('dbDate').value;
     if (!matchDate || tempTeams.length === 0) return;
 
-    // Convert the input date to the slash format (e.g., "01/07/2026")
     const formattedMatchDate = formatDateDisplay(matchDate);
 
-    tempTeams.forEach((t, idx) => {
-        const p1Inputs = document.querySelectorAll(`.db-p1[data-idx="${idx}"]`);
-        const p2Inputs = document.querySelectorAll(`.db-p2[data-idx="${idx}"]`);
+    // 1. Ask Firebase for the absolute newest cloud data right now
+    database.ref('golf_data/rounds').once('value').then((snapshot) => {
+        const cloudRounds = snapshot.val() || [];
+        
+        // 2. Map those fresh cloud scores directly into your screen inputs
+        tempTeams.forEach((t, idx) => {
+            const p1Inputs = document.querySelectorAll(`.db-p1[data-idx="${idx}"]`);
+            const p2Inputs = document.querySelectorAll(`.db-p2[data-idx="${idx}"]`);
 
-        // FIX: This now checks BOTH formats so it never misses a match!
-        const p1Round = rounds.find(r => String(r.playerId) === String(t.p1.id) && (r.date === matchDate || r.date === formattedMatchDate));
-        const p2Round = rounds.find(r => String(r.playerId) === String(t.p2.id) && (r.date === matchDate || r.date === formattedMatchDate));
+            // Search the fresh cloud data instead of the old device memory
+            const p1Round = Object.values(cloudRounds).find(r => String(r.playerId) === String(t.p1.id) && (r.date === matchDate || r.date === formattedMatchDate));
+            const p2Round = Object.values(cloudRounds).find(r => String(r.playerId) === String(t.p2.id) && (r.date === matchDate || r.date === formattedMatchDate));
 
-        if (p1Round && p1Inputs.length > 0) p1Inputs[0].value = p1Round.points || 0;
-        if (p2Round && p2Inputs.length > 0) p2Inputs[0].value = p2Round.points || 0;
+            if (p1Round && p1Inputs.length > 0) p1Inputs[0].value = p1Round.points || 0;
+            if (p2Round && p2Inputs.length > 0) p2Inputs[0].value = p2Round.points || 0;
+        });
     });
 }
     function calculateDoublesResults() {
