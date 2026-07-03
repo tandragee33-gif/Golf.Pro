@@ -667,24 +667,27 @@ function loadData() {
   // Use .on('value') instead of .once() to keep an open, live data stream between all devices
   database.ref('golf_data/').on('value', (snapshot) => {
     const data = snapshot.val();
-    
+
     if (data) {
       // Only overwrite arrays if they actually exist in the incoming cloud packet!
       if (data.players) players = data.players;
       if (data.courses) courses = data.courses;
       if (data.rounds) rounds = data.rounds;
       if (data.pastComps) pastComps = data.pastComps || []; 
-if (data.club) {
+      
+      if (data.club) {
         club = data.club;
         // This makes sure your custom name shows up on the screen right when the app loads!
         if (club.name) {
           document.getElementById('header-club-name').innerText = club.name;
         }
       }
+
       if (data.club) club = data.club;
       if (data.competitionTeams) competitionTeams = data.competitionTeams;
       if (data.pairsT) pairsT = data.pairsT || { rounds: [] }; 
       if (data.singlesT) singlesT = data.singlesT || { rounds: [] }; 
+
     } else {
       // Fallback: If cloud is completely empty, look for older local backups
       players = JSON.parse(localStorage.getItem('g_players')) || [];
@@ -696,12 +699,12 @@ if (data.club) {
       pairsT = JSON.parse(localStorage.getItem('g_pairsT')) || [];
       singlesT = JSON.parse(localStorage.getItem('g_singlesT')) || [];
     }
-    
+
     // Run all your standard layout and graphic functions safely on every update
     try { 
         if (typeof renderActiveTeams === "function") renderActiveTeams(); 
     } catch(e) { console.log("Team draw failed"); }
-    
+
     try { 
         if (typeof renderMatchplay === "function") {
           renderMatchplay('pairs');
@@ -712,20 +715,20 @@ if (data.club) {
     try {
         const saved = localStorage.getItem('g_tempTeams');
         if (saved) {
-            tempTeams = JSON.parse(saved);
-            if (typeof renderSavedDoubles === "function") renderSavedDoubles(); 
+          tempTeams = JSON.parse(saved);
+          if (typeof renderSavedDoubles === "function") renderSavedDoubles(); 
         } else {
             tempTeams = [];
         }
     } catch(e) { console.log("Doubles draw failed"); }
 
-// Safe length checks that won't crash the console
+    // Safe length checks that won't crash the console
     if ((Array.isArray(pairsT) ? pairsT.length === 0 : (!pairsT || !pairsT.rounds || pairsT.rounds.length === 0)) && typeof renderMatchplay === "function") {
-       renderMatchplay('pairs');
+      renderMatchplay('pairs');
     }
     
     if ((Array.isArray(singlesT) ? singlesT.length === 0 : (!singlesT || !singlesT.rounds || singlesT.rounds.length === 0)) && typeof renderMatchplay === "function") {
-       renderMatchplay('singles');
+      renderMatchplay('singles');
     }
 
     // Automatically refresh all live screens whenever a change is synced
@@ -734,21 +737,22 @@ if (data.club) {
         if (typeof renderRegistry === "function") renderRegistry();
         if (typeof renderStats === "function") renderStats();
         if (typeof renderDashboard === "function") renderDashboard();
-        
+
         // Force the detailed sub-view leaderboard to refresh automatically if it is open
         const detailView = document.getElementById('dash-detail');
         if (detailView && !detailView.classList.contains('hidden')) {
             const activeDate = document.getElementById('rDate')?.value || (rounds[0]?.date);
             const activeCourseId = document.getElementById('rCourse')?.value || (rounds[0]?.courseId);
+
             if (activeDate && activeCourseId && typeof viewDetail === "function") {
-                viewDetail(activeDate, activeCourseId);
+               viewDetail(activeDate, activeCourseId);
             }
         }
     }, 50);
 
   }, (err) => {
-      console.error("Cloud data loading failed: ", err);
-  });
+     console.error("Cloud data loading failed: ", err);
+  }); // <-- FIXED: Added the proper closing blocks for the listener here!
 }
 function saveGolfApiKey() {
    const keyField = document.getElementById('golfApiKey');
