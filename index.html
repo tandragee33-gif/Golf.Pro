@@ -1451,7 +1451,7 @@ function viewDetail(date, courseId) {
         document.getElementById('dash-detail').classList.add('hidden');
     }
 
-   function renderMatchplay(type) {
+function renderMatchplay(type) {
     const t = (type === 'pairs') ? pairsT : singlesT;
     const setupDiv = document.getElementById(type === 'pairs' ? 'p-setup' : 's-setup');
     const bracketDiv = document.getElementById(type === 'pairs' ? 'p-bracket' : 's-bracket');
@@ -1495,17 +1495,6 @@ function viewDetail(date, courseId) {
         }
         
         bracketDiv.innerHTML = HTMLContent;
-    }
-}
-        const lastRound = t.rounds[t.rounds.length - 1];
-        if (lastRound && lastRound.length === 1 && lastRound[0].win) {
-            const champ = lastRound[0].win === 'A' ? lastRound[0].uA.name : lastRound[0].uB.name;
-            winArea.innerHTML = '<div class="champion-box">' +
-                '<h2>🏆 Champion: ' + champ + '</h2>' +
-                '<p>Result: <input type="text" id="match-score-input" placeholder="4&3" style="width:60px"></p>' +
-                '<button class="btn-save-comp" onclick="saveTournamentRecord(\'' + type + '\', \'' + champ + '\')">Save to History</button>' +
-                '</div>';
-        }
     }
 }
     function initTourney(type) {
