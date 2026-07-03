@@ -2314,6 +2314,12 @@ function renderSavedDoubles() {
                 lockButton.disabled = false;
                 
                 lockButton.onclick = function() {
+                    // STOPS FUNCTION IMMEDIATELY IF NOT SIGNED IN AS ADMIN
+                    const viewSelector = document.getElementById('app-mode-select');
+                    if (!viewSelector || viewSelector.value !== 'admin') {
+                        return alert("Access Denied: Only an Admin can lock rounds and adjust handicaps.");
+                    }
+                    
                     calculateAndAdjustHandicaps(date, courseId);
                 };
             }
@@ -2362,26 +2368,23 @@ function renderSavedDoubles() {
             r.isLocked = true;
         });
 
+        // Save data and update views cleanly
         saveData();
         if (typeof renderPlayers === "function") renderPlayers(); 
         if (typeof renderDashboard === "function") renderDashboard();
         
-// 1. Save data, render basic screens, and alert admins
-    saveData();
-    if (typeof renderPlayers === "function") renderPlayers(); 
-    if (typeof renderDashboard === "function") renderDashboard();
-    
-    // Clean Trigger Rule: Only show the alert popup if an Admin is looking at the screen 
-    const viewSelector = document.getElementById('app-mode-select');
-    if (viewSelector && viewSelector.value === 'admin') {
-        alert((typeof message !== "undefined" ? message : "") + "\nHandicaps updated and event locked successfully!");
-    }
+        // Final alert rule verifying the active mode selector view
+        const viewSelector = document.getElementById('app-mode-select');
+        if (viewSelector && viewSelector.value === 'admin') {
+            alert(message + "\nHandicaps updated and event locked successfully!");
+        }
 
-    // Refresh detail view layout to visually gray out the button immediately
-    if (typeof window.viewDetail === "function" && typeof date !== "undefined" && typeof courseId !== "undefined") {
-        window.viewDetail(date, courseId);
+        // Refresh detail view layout to visually update instantly
+        if (typeof window.viewDetail === "function") {
+            window.viewDetail(date, courseId);
+        }
     }
-} // Closes the function that saveData() belongs to
+})();
 
 // --- SINGLE MASTER CLOUD ENGINE ---
 if (typeof database !== "undefined") {
