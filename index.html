@@ -673,7 +673,7 @@ function loadData() {
       if (data.players) players = data.players;
       if (data.courses) courses = data.courses;
       if (data.rounds) rounds = data.rounds;
-      if (data.pastComps) pastComps = data.pastComps;
+      if (data.pastComps) pastComps = data.pastComps || []; 
 if (data.club) {
         club = data.club;
         // This makes sure your custom name shows up on the screen right when the app loads!
@@ -683,8 +683,8 @@ if (data.club) {
       }
       if (data.club) club = data.club;
       if (data.competitionTeams) competitionTeams = data.competitionTeams;
-      if (data.pairsT) pairsT = data.pairsT;
-      if (data.singlesT) singlesT = data.singlesT;
+      if (data.pairsT) pairsT = data.pairsT || { rounds: [] }; 
+      if (data.singlesT) singlesT = data.singlesT || { rounds: [] }; 
     } else {
       // Fallback: If cloud is completely empty, look for older local backups
       players = JSON.parse(localStorage.getItem('g_players')) || [];
