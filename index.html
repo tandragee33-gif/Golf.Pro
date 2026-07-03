@@ -737,6 +737,11 @@ function loadData() {
         if (typeof renderRegistry === "function") renderRegistry();
         if (typeof renderStats === "function") renderStats();
         if (typeof renderDashboard === "function") renderDashboard();
+// ADD THIS LINE HERE: This tells Device 2 to instantly redraw the new scores 
+        // the exact split-second they arrive from Device 1!
+        if (typeof updateScorecardFromHistory === "function") updateScorecardFromHistory();
+
+        // Force the detailed sub-view leaderboard to refresh automatically...
 
         // Force the detailed sub-view leaderboard to refresh automatically if it is open
         const detailView = document.getElementById('dash-detail');
