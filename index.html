@@ -2366,93 +2366,47 @@ function renderSavedDoubles() {
         if (typeof renderPlayers === "function") renderPlayers(); 
         if (typeof renderDashboard === "function") renderDashboard();
         
-saveData();
-        if (typeof renderPlayers === "function") renderPlayers(); 
-        if (typeof renderDashboard === "function") renderDashboard();
-        
-        // Clean Trigger Rule: Only show the alert popup if an Admin is looking at the screen 
-        const viewSelector = document.getElementById('app-mode-select');
-        if (viewSelector && viewSelector.value === 'admin') {
-            alert(message + "\nHandicaps updated and event locked successfully!");
-        }
-
-        // Refresh detail view layout to visually gray out the button immediately
-        window.viewDetail(date, courseId);
-    }
-        
-        // Refresh detail view layout to visually gray out the button immediately
-        window.viewDetail(date, courseId);
-    }
-// Keep a live cloud connection open so everyone's leaderboard updates automatically!
-database.ref('golf_data/rounds').on('value', (snapshot) => {
-    const cloudRounds = snapshot.val();
-    if (cloudRounds) {
-        // 1. Convert messy Firebase database data into a clean list
-        rounds = Object.values(cloudRounds);
-
-        // 2. Safely tell the screens to redraw themselves instantly
-        if (typeof updateLiveLeaderboard === "function") updateLiveLeaderboard();
-        if (typeof renderDashboard === "function") renderDashboard();
-        if (typeof renderStats === "function") renderStats();
-        
-        // 3. If someone has the history detail layout open, refresh that too
-        const detailView = document.getElementById('dash-detail');
-        if (detailView && !detailView.classList.contains('hidden') && window.currentActiveDate && window.currentActiveCourseId) {
-            if (typeof viewDetail === "function") {
-                viewDetail(window.currentActiveDate, window.currentActiveCourseId);
-            }
-        }
-    }
-});
-    if (typeof updateLiveLeaderboard === 'function') {
-      updateLiveLeaderboard(); 
-    }
-    if (typeof renderStats === "function") renderStats();
+// 1. Save data, render basic screens, and alert admins
+    saveData();
+    if (typeof renderPlayers === "function") renderPlayers(); 
     if (typeof renderDashboard === "function") renderDashboard();
-  }
-});
-})();
+    
+    // Clean Trigger Rule: Only show the alert popup if an Admin is looking at the screen 
+    const viewSelector = document.getElementById('app-mode-select');
+    if (viewSelector && viewSelector.value === 'admin') {
+        alert((typeof message !== "undefined" ? message : "") + "\nHandicaps updated and event locked successfully!");
+    }
+
+    // Refresh detail view layout to visually gray out the button immediately
+    if (typeof window.viewDetail === "function" && typeof date !== "undefined" && typeof courseId !== "undefined") {
+        window.viewDetail(date, courseId);
+    }
+} // Closes the function that saveData() belongs to
+
+// --- SINGLE MASTER CLOUD ENGINE ---
 if (typeof database !== "undefined") {
-    // SINGLE MASTER LISTENER FOR CLOUD CHANGES
+    
+    // Listen for any score entry or live updates across ALL devices
     database.ref('golf_data/rounds').on('value', (snapshot) => {
         const remoteRounds = snapshot.val();
+        
         if (remoteRounds) {
-            // 1. Convert data cleanly into an array format and update global variable
+            // Convert data cleanly into an array format and keep unique IDs intact
             rounds = Array.isArray(remoteRounds) ? remoteRounds : Object.keys(remoteRounds).map(key => {
                 return typeof remoteRounds[key] === 'object' ? { id: key, ...remoteRounds[key] } : remoteRounds[key];
             }).filter(Boolean);
 
-            // 2. ALWAYS force-render the leaderboard UI so other devices refresh hands-free immediately!
-            if (typeof updateLiveLeaderboard === 'function') {
-                updateLiveLeaderboard();
-            }
-
-            // 3. Keep all other interface views synchronized
-            if (typeof renderDashboard === "function") renderDashboard();
-            if (typeof renderPlayers === "function") renderPlayers();
-            if (typeof renderStats === "function") renderStats();
-        }
-    });
-
-// REAL-TIME CLOUD ENGINE: Listen for any score entry or live updates across ALL devices
-    database.ref('golf_data/rounds').on('value', (snapshot) => {
-        const cloudRounds = snapshot.val();
-        if (cloudRounds) {
-            // 1. Instantly pull down fresh data into your local app memory
-            rounds = Array.isArray(cloudRounds) ? cloudRounds : Object.values(cloudRounds);
-
-            // 2. FORCE INPUT BOXES TO UPDATE LIVE:
-            // This is the missing piece! It forces the score entry screen to pull the newest cloud numbers into the boxes.
+            // Force input boxes to update live on the score entry screen
             if (typeof updateScorecardFromHistory === "function") {
                 updateScorecardFromHistory();
             }
 
-            // 3. REFRESH LIVE SCORING LAYOUTS:
-            if (typeof updateLiveLeaderboard === "function") {
+            // Force-render the leaderboard UI instantly
+            if (typeof updateLiveLeaderboard === 'function') {
                 updateLiveLeaderboard();
             }
 
-            // 4. REFRESH HISTORY DETAIL LAYOUTS:
+            // Refresh history detail layouts if open
             const detailView = document.getElementById('dash-detail');
             if (detailView && !detailView.classList.contains('hidden') && window.currentActiveDate && window.currentActiveCourseId) {
                 if (typeof viewDetail === "function") {
@@ -2460,8 +2414,9 @@ if (typeof database !== "undefined") {
                 }
             }
 
-            // 5. Update background views
+            // Keep all other interface views synchronized
             if (typeof renderDashboard === "function") renderDashboard();
+            if (typeof renderPlayers === "function") renderPlayers();
             if (typeof renderStats === "function") renderStats();
         }
     });
