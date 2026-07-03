@@ -1451,17 +1451,16 @@ function viewDetail(date, courseId) {
         document.getElementById('dash-detail').classList.add('hidden');
     }
 
-function renderMatchplay(type) {
+    function renderMatchplay(type) {
     const t = (type === 'pairs') ? pairsT : singlesT;
     const setupDiv = document.getElementById(type === 'pairs' ? 'p-setup' : 's-setup');
     const bracketDiv = document.getElementById(type === 'pairs' ? 'p-bracket' : 's-bracket');
     const selector = document.getElementById(type === 'pairs' ? 'p-selector' : 's-selector');
     const winArea = document.getElementById(type === 'pairs' ? 'p-winner-area' : 's-winner-area');
-    
     winArea.innerHTML = "";
 
-    // Check if 't' is empty or doesn't have rounds yet
-    if (!t || !t.rounds || t.rounds.length === 0) {
+    // FIXED: Check if 't' is empty or doesn't have rounds yet
+    if (!t || !t.rounds || t.length === 0) {
         setupDiv.classList.remove('hidden'); 
         bracketDiv.classList.add('hidden');
         selector.innerHTML = players.map(p => `<div class="selector-item"><label for="${type}-${p.id}">${p.name}</label><input type="checkbox" class="${type}-ck" id="${type}-${p.id}" value="${p.id}"></div>`).join('');
@@ -1469,142 +1468,94 @@ function renderMatchplay(type) {
         setupDiv.classList.add('hidden'); 
         bracketDiv.classList.remove('hidden');
         
-        let HTMLContent = `<button class="btn-del" style="margin-bottom:15px;" onclick="resetT('${type}')">Reset Bracket</button>`;
-        
-        // Loop through the rounds sequentially
-        for (let i = 0; i < t.rounds.length; i++) {
-            const rd = t.rounds[i];
-            
-            // Build the HTML for the current round
-            HTMLContent += `<h4>Round ${i+1}</h4>` + rd.map(m => `
-                <div class="match-card">
-                    <div class="${m.win==='A'?'winner-row':''}">${m.uA.name}</div>
-                    <div style="text-align:center; color:#999; font-size:10px;">VS</div>
-                    <div class="${m.win==='B'?'winner-row':''}">${m.uB ? m.uB.name : 'BYE'}</div>
-                    <div style="text-flex; gap:5px; margin-top:10px;">
-                        <button class="btn-outline" onclick="setWin('${type}',${i},'${m.id}','A')">Win A</button>
-                        <button class="btn-outline" onclick="setWin('${type}',${i},'${m.id}','B')">Win B</button>
-                    </div>
-                </div>`).join('');
-            
-            // CHECK RULE: If any match in this round doesn't have a winner yet, stop rendering further rounds
-            const roundComplete = rd.every(m => m.win === 'A' || m.win === 'B' || !m.uB); 
-            if (!roundComplete) {
-                break; // Breaks out of the loop so Round i+1 never gets drawn
+        bracketDiv.innerHTML = `<button class="btn-del" style="margin-bottom:15px;" onclick="resetT('${type}')">Reset Bracket</button>` +
+            t.rounds.map((rd, i) => `<h4>Round ${i+1}</h4>` + rd.map(m => `
+            <div class="match-card">
+                <div class="${m.win==='A'?'winner-row':''}">${m.uA.name}</div>
+                <div style="text-align:center; color:#999; font-size:10px;">VS</div>
+                <div class="${m.win==='B'?'winner-row':''}">${m.uB ? m.uB.name : 'BYE'}</div>
+                <div style="text-flex; gap:5px; margin-top:10px;">
+                    <button class="btn-outline" onclick="setWin('${type}',${i},'${m.id}','A')">Win A</button>
+                    <button class="btn-outline" onclick="setWin('${type}',${i},'${m.id}','B')">Win B</button>
+                </div>
+            </div>`).join('')).join('');
+
+        const lastRound = t.rounds[t.rounds.length - 1];
+        if (lastRound && lastRound.length === 1 && lastRound[0].win) {
+            const champ = lastRound[0].win === 'A' ? lastRound[0].uA.name : lastRound[0].uB.name;
+            winArea.innerHTML = '<div class="champion-box">' +
+                '<h2>🏆 Champion: ' + champ + '</h2>' +
+                '<p>Result: <input type="text" id="match-score-input" placeholder="4&3" style="width:60px"></p>' +
+                '<button class="btn-save-comp" onclick="saveTournamentRecord(\'' + type + '\', \'' + champ + '\')">Save to History</button>' +
+                '</div>';
+        }
+    }
+}
+    function initTourney(type) {
+        const ids = Array.from(document.querySelectorAll(`.${type}-ck:checked`)).map(i => i.value);
+        if(ids.length < 2) return alert("Select players.");
+        let units = [];
+        if(type === 'singles') {
+            units = ids.map(id => ({ id: 'u'+id, name: players.find(p=>p.id==id).name }));
+        } else {
+            const shuf = ids.sort(()=>0.5-Math.random());
+            for(let i=0; i<shuf.length; i+=2) {
+                if(shuf[i+1]) units.push({id:'u'+i, name:players.find(p=>p.id==shuf[i]).name + " / " + players.find(p=>p.id==shuf[i+1]).name});
+                else units.push({id:'u'+i, name:players.find(p=>p.id==shuf[i]).name});
             }
         }
-        
-        bracketDiv.innerHTML = HTMLContent;
+        const matches = []; 
+        for(let i=0; i<units.length; i+=2) matches.push({id:'m'+i, uA:units[i], uB:units[i+1]||null, win:null});
+        const obj = { rounds: [matches] }; 
+        if(type==='pairs') pairsT=obj; else singlesT=obj; 
+        saveData(); progressTourney(type); renderMatchplay(type);
     }
-}
-function initTourney(type) {
-    const ids = Array.from(document.querySelectorAll(`.${type}-ck:checked`)).map(i => i.value);
-    if(ids.length < 2) return alert("Select players.");
-    let units = [];
-    if(type === 'singles') {
-        units = ids.map(id => ({ id: id, name: players.find(p=>p.id==id).name })); // FIXED: Removed the 'u' prefix so IDs match your player database perfectly
-    } else {
-        const shuf = ids.sort(()=>0.5-Math.random());
-        for(let i=0; i<shuf.length; i+=2) {
-            if(shuf[i+1]) units.push({id: 'g'+i, name:players.find(p=>p.id==shuf[i]).name + " / " + players.find(p=>p.id==shuf[i+1]).name});
-            else units.push({id: 'g'+i, name:players.find(p=>p.id==shuf[i]).name});
-        }
+
+    function setWin(type, rIdx, mId, win) {
+        const t=(type==='pairs')?pairsT:singlesT;
+        const match = t.rounds[rIdx].find(x=>x.id===mId);
+        if(!match.uB && win === 'B') return;
+        match.win = win;
+        saveData(); progressTourney(type); renderMatchplay(type);
     }
-    const matches = []; 
-    for(let i=0; i<units.length; i+=2) matches.push({id:'m'+i, uA:units[i], uB:units[i+1]||null, win:null});
-    const obj = { rounds: [matches] }; 
-   
-    if(type==='pairs') pairsT=obj; else singlesT=obj; 
-    saveData();
-    progressTourney(type); 
-    renderMatchplay(type);
-}
 
-function setWin(type, rIdx, mId, win) {
-    const t=(type==='pairs')?pairsT:singlesT;
-    const match = t.rounds[rIdx].find(x=>x.id===mId);
-    if(!match.uB && win === 'B') return;
-    match.win = win;
-
-    saveData(); 
-    progressTourney(type); 
-    renderMatchplay(type);
-}
-
-function progressTourney(type) {
-    const t = (type === 'pairs') ? pairsT : singlesT;
-    let lastRound = t.rounds[t.rounds.length - 1];
-    const isComplete = lastRound.every(m => m.win !== null || m.uB === null);
-
-    if (isComplete) {
-        // FIXED: Catch the tournament conclusion (Grand Final finished!)
-        if (lastRound.length === 1) {
-            const finalMatch = lastRound[0];
-            const winnerUnit = finalMatch.win === 'A' ? finalMatch.uA : finalMatch.uB;
-            
-            // Ask for the final match score
-            const scorePrompt = prompt(`🏆 Tournament Finished!\nEnter final match score for ${winnerUnit.name} (e.g., 3&2, 1Up):`, "");
-            
-            // Explicitly route and execute the save record mechanism
-            saveTournamentRecord(type, winnerUnit.name, scorePrompt);
-            return;
-        }
-
-        // Advance to the next round if there are multiple matches
-        if (lastRound.length > 1) {
+    function progressTourney(type) {
+        const t = (type === 'pairs') ? pairsT : singlesT;
+        let lastRound = t.rounds[t.rounds.length - 1];
+        const isComplete = lastRound.every(m => m.win !== null || m.uB === null);
+        if(isComplete && lastRound.length > 1) {
             const winners = lastRound.map(m => (!m.uB || m.win === 'A') ? m.uA : m.uB);
             const nextRound = [];
-            for(let i=0; i<winners.length; i+=2) {
-                nextRound.push({ id: 'm' + Date.now() + i, uA: winners[i], uB: winners[i+1] || null, win: null });
-            }
+            for(let i=0; i<winners.length; i+=2) nextRound.push({ id: 'm' + Date.now() + i, uA: winners[i], uB: winners[i+1] || null, win: null });
             t.rounds.push(nextRound);
-            saveData(); 
-            progressTourney(type);
+            saveData(); progressTourney(type);
         }
     }
-}
 
-// FIXED: Receives the score directly from the prompt fallback if an input field doesn't exist
-function saveTournamentRecord(type, winner, promptedScore) {
-    // Look for fallback input, otherwise use what was passed into the prompt box
-    const scoreField = document.getElementById('match-score-input');
-    const finalScore = scoreField ? scoreField.value : (promptedScore || '');
+function saveTournamentRecord(type, winner) {
+    // Line 1: Get the score from the box
+    const score = document.getElementById('match-score-input') ? document.getElementById('match-score-input').value : '';
 
     const entry = { 
         id: Date.now(), 
         type: type === 'pairs' ? 'Pairs KO' : 'Singles KO', 
         winner: winner, 
         date: new Date().toLocaleDateString('en-GB'),
-        detail: finalScore ? "Score: " + finalScore : "Matchplay Champion"
+        // Line 2: Add the score to the entry
+        detail: score ? "Score: " + score : ""
     };
-
-    if (typeof pastComps !== "undefined") {
-        pastComps.push(entry); 
-    }
-    
+    pastComps.push(entry); 
     saveData(); 
-    alert("Saved successfully to competition history!");
+    alert("Saved!");
     resetT(type); 
-    
-    if (typeof showTab === "function") {
-        showTab('tab-dash');
+    showTab('tab-dash');
+}
+
+    function resetT(type) { if(type==='pairs') pairsT=null; else singlesT=null; saveData(); renderMatchplay(type); }
+
+    function renderDoublesSelector() {
+        document.getElementById('doubles-selector').innerHTML = players.map(p => `<div class="selector-item"><label for="db-${p.id}">${p.name}</label><input type="checkbox" class="db-ck" id="db-${p.id}" value="${p.id}"></div>`).join('');
     }
-}
-
-function resetT(type) { 
-    if(type==='pairs') pairsT=null; else singlesT=null; 
-    saveData(); 
-    renderMatchplay(type); 
-}
-
-function renderDoublesSelector() {
-    document.getElementById('doubles-selector').innerHTML = players.map(p => `
-        <div class="selector-item">
-            <label for="db-${p.id}">${p.name}</label>
-            <input type="checkbox" class="db-ck" id="db-${p.id}" value="${p.id}">
-        </div>
-    `).join('');
-}
 
 function setupDoublesTeams() {
     const ids = Array.from(document.querySelectorAll('.db-ck:checked')).map(i => i.value);
