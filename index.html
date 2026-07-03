@@ -1451,16 +1451,17 @@ function viewDetail(date, courseId) {
         document.getElementById('dash-detail').classList.add('hidden');
     }
 
-    function renderMatchplay(type) {
+   function renderMatchplay(type) {
     const t = (type === 'pairs') ? pairsT : singlesT;
     const setupDiv = document.getElementById(type === 'pairs' ? 'p-setup' : 's-setup');
     const bracketDiv = document.getElementById(type === 'pairs' ? 'p-bracket' : 's-bracket');
     const selector = document.getElementById(type === 'pairs' ? 'p-selector' : 's-selector');
     const winArea = document.getElementById(type === 'pairs' ? 'p-winner-area' : 's-winner-area');
+    
     winArea.innerHTML = "";
 
-    // FIXED: Check if 't' is empty or doesn't have rounds yet
-    if (!t || !t.rounds || t.length === 0) {
+    // Check if 't' is empty or doesn't have rounds yet
+    if (!t || !t.rounds || t.rounds.length === 0) {
         setupDiv.classList.remove('hidden'); 
         bracketDiv.classList.add('hidden');
         selector.innerHTML = players.map(p => `<div class="selector-item"><label for="${type}-${p.id}">${p.name}</label><input type="checkbox" class="${type}-ck" id="${type}-${p.id}" value="${p.id}"></div>`).join('');
@@ -1468,18 +1469,34 @@ function viewDetail(date, courseId) {
         setupDiv.classList.add('hidden'); 
         bracketDiv.classList.remove('hidden');
         
-        bracketDiv.innerHTML = `<button class="btn-del" style="margin-bottom:15px;" onclick="resetT('${type}')">Reset Bracket</button>` +
-            t.rounds.map((rd, i) => `<h4>Round ${i+1}</h4>` + rd.map(m => `
-            <div class="match-card">
-                <div class="${m.win==='A'?'winner-row':''}">${m.uA.name}</div>
-                <div style="text-align:center; color:#999; font-size:10px;">VS</div>
-                <div class="${m.win==='B'?'winner-row':''}">${m.uB ? m.uB.name : 'BYE'}</div>
-                <div style="text-flex; gap:5px; margin-top:10px;">
-                    <button class="btn-outline" onclick="setWin('${type}',${i},'${m.id}','A')">Win A</button>
-                    <button class="btn-outline" onclick="setWin('${type}',${i},'${m.id}','B')">Win B</button>
-                </div>
-            </div>`).join('')).join('');
-
+        let HTMLContent = `<button class="btn-del" style="margin-bottom:15px;" onclick="resetT('${type}')">Reset Bracket</button>`;
+        
+        // Loop through the rounds sequentially
+        for (let i = 0; i < t.rounds.length; i++) {
+            const rd = t.rounds[i];
+            
+            // Build the HTML for the current round
+            HTMLContent += `<h4>Round ${i+1}</h4>` + rd.map(m => `
+                <div class="match-card">
+                    <div class="${m.win==='A'?'winner-row':''}">${m.uA.name}</div>
+                    <div style="text-align:center; color:#999; font-size:10px;">VS</div>
+                    <div class="${m.win==='B'?'winner-row':''}">${m.uB ? m.uB.name : 'BYE'}</div>
+                    <div style="text-flex; gap:5px; margin-top:10px;">
+                        <button class="btn-outline" onclick="setWin('${type}',${i},'${m.id}','A')">Win A</button>
+                        <button class="btn-outline" onclick="setWin('${type}',${i},'${m.id}','B')">Win B</button>
+                    </div>
+                </div>`).join('');
+            
+            // CHECK RULE: If any match in this round doesn't have a winner yet, stop rendering further rounds
+            const roundComplete = rd.every(m => m.win === 'A' || m.win === 'B' || !m.uB); 
+            if (!roundComplete) {
+                break; // Breaks out of the loop so Round i+1 never gets drawn
+            }
+        }
+        
+        bracketDiv.innerHTML = HTMLContent;
+    }
+}
         const lastRound = t.rounds[t.rounds.length - 1];
         if (lastRound && lastRound.length === 1 && lastRound[0].win) {
             const champ = lastRound[0].win === 'A' ? lastRound[0].uA.name : lastRound[0].uB.name;
@@ -1789,7 +1806,7 @@ function saveRound() {
 
     function editRound(id) {
         const r = rounds.find(x => String(x.id) === String(id));
-        showTab('tab-comp');
+        showTab('tab-dash');
         document.getElementById('editRoundId').value = r.id;
         document.getElementById('rDate').value = formatDateDisplay(r.date);
         document.getElementById('rCourse').value = r.courseId;
