@@ -1491,26 +1491,36 @@ function viewDetail(date, courseId) {
         }
     }
 }
-    function initTourney(type) {
-        const ids = Array.from(document.querySelectorAll(`.${type}-ck:checked`)).map(i => i.value);
-        if(ids.length < 2) return alert("Select players.");
-        let units = [];
-        if(type === 'singles') {
-            units = ids.map(id => ({ id: 'u'+id, name: players.find(p=>p.id==id).name }));
-        } else {
-            const shuf = ids.sort(()=>0.5-Math.random());
-            for(let i=0; i<shuf.length; i+=2) {
-                if(shuf[i+1]) units.push({id:'u'+i, name:players.find(p=>p.id==shuf[i]).name + " / " + players.find(p=>p.id==shuf[i+1]).name});
-                else units.push({id:'u'+i, name:players.find(p=>p.id==shuf[i]).name});
-            }
+function initTourney(type) {
+    const ids = Array.from(document.querySelectorAll(`.${type}-ck:checked`)).map(i => i.value);
+    
+    if(ids.length < 2) return alert("Select players.");
+    let units = [];
+    if(type === 'singles') {
+        units = ids.map(id => ({ id: 'u'+id, name: players.find(p=>p.id==id).name }));
+    } else {
+        const shuf = ids.sort(()=>0.5-Math.random());
+        for(let i=0; i<shuf.length; i+=2) {
+            if(shuf[i+1]) units.push({id:'u'+i, name:players.find(p=>p.id==shuf[i]).name + " / " + players.find(p=>p.id==shuf[i+1]).name});
+            else units.push({id:'u'+i, name:players.find(p=>p.id==shuf[i]).name});
         }
-        const matches = []; 
-        for(let i=0; i<units.length; i+=2) matches.push({id:'m'+i, uA:units[i], uB:units[i+1]||null, win:null});
-        const obj = { rounds: [matches] }; 
-if(type==='pairs') pairsT=obj; else singlesT=obj; 
-  saveData(); 
-  renderMatchplay(type);
     }
+    const matches = []; 
+    for(let i=0; i<units.length; i+=2) {
+        // Fix: Gives each match a distinct timestamped ID so they never conflict
+        matches.push({
+            id: 'm_' + Date.now() + '_' + i, 
+            uA: units[i], 
+            uB: units[i+1]||null, 
+            win: null
+        });
+    }
+    const obj = { rounds: [matches] }; 
+    if(type==='pairs') pairsT=obj; else singlesT=obj; 
+
+    saveData(); 
+    renderMatchplay(type);
+}
 
     function setWin(type, rIdx, mId, win) {
         const t=(type==='pairs')?pairsT:singlesT;
