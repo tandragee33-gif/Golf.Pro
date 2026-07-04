@@ -1507,8 +1507,9 @@ function viewDetail(date, courseId) {
         const matches = []; 
         for(let i=0; i<units.length; i+=2) matches.push({id:'m'+i, uA:units[i], uB:units[i+1]||null, win:null});
         const obj = { rounds: [matches] }; 
-        if(type==='pairs') pairsT=obj; else singlesT=obj; 
-        saveData(); progressTourney(type);
+if(type==='pairs') pairsT=obj; else singlesT=obj; 
+  saveData(); 
+  renderMatchplay(type);
     }
 
     function setWin(type, rIdx, mId, win) {
@@ -1525,30 +1526,30 @@ function progressTourney(type) {
 
     let lastRound = t.rounds[t.rounds.length - 1];
     
-    // If we've reached the final single match and it has a winner, we are done
+    // 1. If there's only 1 match left and it has a winner, the tournament is finished.
     if (lastRound.length === 1 && lastRound[0].win !== null) return;
 
-    // Check if every match in this round has an assigned winner
+    // 2. Check if every match in the current active round has an assigned winner.
     const isComplete = lastRound.every(m => m.win !== null || m.uB === null);
    
-    // Only move forward and generate the next single round if the current round is complete!
+    // 3. ONLY move forward and push the next round if the current round is complete!
     if (isComplete) {
         const winners = lastRound.map(m => (!m.uB || m.win === 'A') ? m.uA : m.uB);
         const nextRound = [];
         
         for (let i = 0; i < winners.length; i += 2) {
             nextRound.push({ 
-                id: 'm' + Date.now() + i, 
-                uA: winners[i], 
+                id: 'm_' + t.rounds.length + '_' + i + '_' + Date.now(), 
+                uA: winners[i] || null, 
                 uB: winners[i+1] || null, 
                 win: null 
             });
         }
        
         t.rounds.push(nextRound);
-        saveData(); // Syncs neatly to your Google Firebase
+        saveData(); // Save the single new round to Firebase
         
-        // REMOVED: progressTourney(type); <-- Removing this prevents the runaway cascade!
+        // NO internal looping call here anymore! This forces it to stop.
     }
 }
 
