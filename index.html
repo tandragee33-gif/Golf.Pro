@@ -1491,44 +1491,56 @@ function viewDetail(date, courseId) {
         }
     }
 }
-function initTourney(type) {
-    const ids = Array.from(document.querySelectorAll(`.${type}-ck:checked`)).map(i => i.value);
-    
-    if(ids.length < 2) return alert("Select players.");
-    let units = [];
-    if(type === 'singles') {
-        units = ids.map(id => ({ id: 'u'+id, name: players.find(p=>p.id==id).name }));
-    } else {
-        const shuf = ids.sort(()=>0.5-Math.random());
-        for(let i=0; i<shuf.length; i+=2) {
-            if(shuf[i+1]) units.push({id:'u'+i, name:players.find(p=>p.id==shuf[i]).name + " / " + players.find(p=>p.id==shuf[i+1]).name});
-            else units.push({id:'u'+i, name:players.find(p=>p.id==shuf[i]).name});
-        }
-    }
-    const matches = []; 
-    for(let i=0; i<units.length; i+=2) {
-        // Fix: Gives each match a distinct timestamped ID so they never conflict
-        matches.push({
-            id: 'm_' + Date.now() + '_' + i, 
-            uA: units[i], 
-            uB: units[i+1]||null, 
-            win: null
-        });
-    }
-    const obj = { rounds: [matches] }; 
-    if(type==='pairs') pairsT=obj; else singlesT=obj; 
+function progressTourney(type) {
+    const t = (type === 'pairs') ? pairsT : singlesT;
+    if (!t || !t.rounds || t.rounds.length === 0) return;
 
-    saveData(); 
-    renderMatchplay(type);
+    let lastRound = t.rounds[t.rounds.length - 1];
+    
+    // 1. If we are down to the final match and it has a winner, stop
+    if (lastRound.length === 1 && lastRound[0].win !== null) return;
+
+    // 2. ONLY count the round as complete if EVERY match box has a chosen winner selected
+    const isComplete = lastRound.every(m => {
+        if (m.uA && m.uB) {
+            return m.win === 'A' || m.win === 'B'; // Both exist, so an actual winner must be picked
+        }
+        return true; // If it's a structural Bye, it doesn't block the progression
+    });
+   
+    // 3. Only step forward to generate Round 2 if the current round is 100% complete
+    if (isComplete) {
+        const winners = lastRound.map(m => (!m.uB || m.win === 'A') ? m.uA : m.uB);
+        const nextRound = [];
+        
+        for (let i = 0; i < winners.length; i += 2) {
+            nextRound.push({ 
+                id: 'm_' + t.rounds.length + '_' + i + '_' + Date.now(), 
+                uA: winners[i] || null, 
+                uB: winners[i+1] || null, 
+                win: null 
+            });
+        }
+       
+        t.rounds.push(nextRound);
+        saveData(); // Syncs to your Firebase Cloud database
+    }
 }
 
-    function setWin(type, rIdx, mId, win) {
-        const t=(type==='pairs')?pairsT:singlesT;
-        const match = t.rounds[rIdx].find(x=>x.id===mId);
-        if(!match.uB && win === 'B') return;
-        match.win = win;
-        saveData(); progressTourney(type); renderMatchplay(type);
-    }
+function setWin(type, roundIdx, matchId, side) {
+    const t = (type === 'pairs') ? pairsT : singlesT;
+    if(!t || !t.rounds || !t.rounds[roundIdx]) return;
+    
+    const match = t.rounds[roundIdx].find(m => String(m.id) === String(matchId));
+    if(!match) return;
+    
+    // Toggle or assign the side winner selection
+    match.win = (match.win === side) ? null : side;
+    
+    saveData();            // Save the selection to Firebase
+    progressTourney(type); // Safely check if the entire round is ready to progress
+    renderMatchplay(type); // Redraw the visual brackets
+}
 
 function progressTourney(type) {
     const t = (type === 'pairs') ? pairsT : singlesT;
