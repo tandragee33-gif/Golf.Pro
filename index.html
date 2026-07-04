@@ -1519,18 +1519,38 @@ function viewDetail(date, courseId) {
         saveData(); progressTourney(type); renderMatchplay(type);
     }
 
-    function progressTourney(type) {
-        const t = (type === 'pairs') ? pairsT : singlesT;
-        let lastRound = t.rounds[t.rounds.length - 1];
-        const isComplete = lastRound.every(m => m.win !== null || m.uB === null);
-        if(isComplete && lastRound.length > 1) {
-            const winners = lastRound.map(m => (!m.uB || m.win === 'A') ? m.uA : m.uB);
-            const nextRound = [];
-            for(let i=0; i<winners.length; i+=2) nextRound.push({ id: 'm' + Date.now() + i, uA: winners[i], uB: winners[i+1] || null, win: null });
-            t.rounds.push(nextRound);
-            saveData(); progressTourney(type);
+function progressTourney(type) {
+    const t = (type === 'pairs') ? pairsT : singlesT;
+    if (!t || !t.rounds || t.rounds.length === 0) return;
+
+    let lastRound = t.rounds[t.rounds.length - 1];
+    
+    // If we've reached the final single match and it has a winner, we are done
+    if (lastRound.length === 1 && lastRound[0].win !== null) return;
+
+    // Check if every match in this round has an assigned winner
+    const isComplete = lastRound.every(m => m.win !== null || m.uB === null);
+   
+    // Only move forward and generate the next single round if the current round is complete!
+    if (isComplete) {
+        const winners = lastRound.map(m => (!m.uB || m.win === 'A') ? m.uA : m.uB);
+        const nextRound = [];
+        
+        for (let i = 0; i < winners.length; i += 2) {
+            nextRound.push({ 
+                id: 'm' + Date.now() + i, 
+                uA: winners[i], 
+                uB: winners[i+1] || null, 
+                win: null 
+            });
         }
+       
+        t.rounds.push(nextRound);
+        saveData(); // Syncs neatly to your Google Firebase
+        
+        // REMOVED: progressTourney(type); <-- Removing this prevents the runaway cascade!
     }
+}
 
 function saveTournamentRecord(type, winner) {
     // Line 1: Get the score from the box
