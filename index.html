@@ -1508,7 +1508,7 @@ function viewDetail(date, courseId) {
         for(let i=0; i<units.length; i+=2) matches.push({id:'m'+i, uA:units[i], uB:units[i+1]||null, win:null});
         const obj = { rounds: [matches] }; 
         if(type==='pairs') pairsT=obj; else singlesT=obj; 
-        saveData(); progressTourney(type); renderMatchplay(type);
+        saveData(); progressTourney(type);
     }
 
     function setWin(type, rIdx, mId, win) {
