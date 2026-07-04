@@ -1525,18 +1525,29 @@ function progressTourney(type) {
     if (!t || !t.rounds || t.rounds.length === 0) return;
 
     let lastRound = t.rounds[t.rounds.length - 1];
-    
-    // 1. If there's only 1 match left and it has a winner, the tournament is finished.
     if (lastRound.length === 1 && lastRound[0].win !== null) return;
 
-    // 2. Check if every match in the current active round has an assigned winner.
-    const isComplete = lastRound.every(m => m.win !== null || m.uB === null);
+    // --- FIX IS RIGHT HERE ---
+    // A match is only complete if it HAS a winner recorded ('A' or 'B'). 
+    // If a match is a Bye (meaning one side is missing), we automatically consider it ready.
+    const isComplete = lastRound.every(m => {
+        // If it's a real match (both uA and uB exist), it MUST have a winner chosen
+        if (m.uA && m.uB) {
+            return m.win !== null;
+        }
+        // If it's a Bye, it doesn't hold up the round
+        return true;
+    });
    
-    // 3. ONLY move forward and push the next round if the current round is complete!
     if (isComplete) {
-        const winners = lastRound.map(m => (!m.uB || m.win === 'A') ? m.uA : m.uB);
-        const nextRound = [];
+        // Safe winner extraction
+        const winners = lastRound.map(m => {
+            if (!m.uB) return m.uA; // uA gets the bye
+            if (!m.uA) return m.uB; // uB gets the bye
+            return (m.win === 'A') ? m.uA : m.uB;
+        });
         
+        const nextRound = [];
         for (let i = 0; i < winners.length; i += 2) {
             nextRound.push({ 
                 id: 'm_' + t.rounds.length + '_' + i + '_' + Date.now(), 
@@ -1547,9 +1558,7 @@ function progressTourney(type) {
         }
        
         t.rounds.push(nextRound);
-        saveData(); // Save the single new round to Firebase
-        
-        // NO internal looping call here anymore! This forces it to stop.
+        saveData();
     }
 }
 
