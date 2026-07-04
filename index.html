@@ -1497,18 +1497,18 @@ function progressTourney(type) {
 
     let lastRound = t.rounds[t.rounds.length - 1];
     
-    // 1. If we are down to the final match and it has a winner, stop
+    // 1. If we are down to the final single match and a winner is picked, the tournament is over.
     if (lastRound.length === 1 && lastRound[0].win !== null) return;
 
-    // 2. ONLY count the round as complete if EVERY match box has a chosen winner selected
+    // 2. ONLY allow progression if EVERY single match card in this round has a winner selected
     const isComplete = lastRound.every(m => {
         if (m.uA && m.uB) {
-            return m.win === 'A' || m.win === 'B'; // Both exist, so an actual winner must be picked
+            return m.win === 'A' || m.win === 'B'; // Real matches MUST have an assigned winner chosen
         }
-        return true; // If it's a structural Bye, it doesn't block the progression
+        return true; // Structural Byes do not hold up the round
     });
    
-    // 3. Only step forward to generate Round 2 if the current round is 100% complete
+    // 3. Only generate Round 2 if the check above confirms all matches are 100% complete
     if (isComplete) {
         const winners = lastRound.map(m => (!m.uB || m.win === 'A') ? m.uA : m.uB);
         const nextRound = [];
@@ -1523,23 +1523,23 @@ function progressTourney(type) {
         }
        
         t.rounds.push(nextRound);
-        saveData(); // Syncs to your Firebase Cloud database
+        saveData(); // Save cleanly to Firebase
     }
 }
 
-function setWin(type, roundIdx, matchId, side) {
+function setWin(type, rIdx, mId, win) {
     const t = (type === 'pairs') ? pairsT : singlesT;
-    if(!t || !t.rounds || !t.rounds[roundIdx]) return;
+    if (!t || !t.rounds || !t.rounds[rIdx]) return;
     
-    const match = t.rounds[roundIdx].find(m => String(m.id) === String(matchId));
-    if(!match) return;
+    const match = t.rounds[rIdx].find(m => String(m.id) === String(mId));
+    if (!match) return;
     
-    // Toggle or assign the side winner selection
-    match.win = (match.win === side) ? null : side;
+    // Toggle or select winner
+    match.win = (match.win === win) ? null : win;
     
-    saveData();            // Save the selection to Firebase
-    progressTourney(type); // Safely check if the entire round is ready to progress
-    renderMatchplay(type); // Redraw the visual brackets
+    saveData();            // Sync selection with cloud database
+    progressTourney(type); // Safely verify if other matches are still waiting
+    renderMatchplay(type); // Redraw the brackets cleanly on your dashboard
 }
 
 function progressTourney(type) {
