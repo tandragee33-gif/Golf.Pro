@@ -1625,70 +1625,27 @@ function setupDoublesTeams() {
 }
 
 function updateScorecardFromHistory() {
-    const dbDateEl = document.getElementById('dbDate');
-    if (!dbDateEl || !dbDateEl.value) {
-        alert("Please select a date first.");
-        return;
-    }
-    const matchDate = dbDateEl.value; // e.g. "2026-07-22"
+    const matchDate = document.getElementById('dbDate').value;
+    if (!matchDate || tempTeams.length === 0) return;
 
-    if (!tempTeams || tempTeams.length === 0) {
-        alert("No teams selected.");
-        return;
-    }
+    const formattedMatchDate = formatDateDisplay(matchDate);
 
-    // Safely format date if helper function exists
-    let formattedMatchDate = matchDate;
-    if (typeof formatDateDisplay === 'function') {
-        formattedMatchDate = formatDateDisplay(matchDate);
-    }
-
-    // 1. Fetch fresh cloud data
+    // 1. Ask Firebase for the absolute newest cloud data right now
     database.ref('golf_data/rounds').once('value').then((snapshot) => {
-        const val = snapshot.val();
-        if (!val) {
-            alert("No rounds found in history.");
-            return;
-        }
-
-        // Convert object or array to flat array safely
-        const cloudRounds = Array.isArray(val) ? val : Object.values(val);
-        let updatedCount = 0;
-
-        // 2. Map fresh cloud scores into your inputs
+        const cloudRounds = snapshot.val() || [];
+        
+        // 2. Map those fresh cloud scores directly into your screen inputs
         tempTeams.forEach((t, idx) => {
             const p1Inputs = document.querySelectorAll(`.db-p1[data-idx="${idx}"]`);
             const p2Inputs = document.querySelectorAll(`.db-p2[data-idx="${idx}"]`);
 
-            // Helper to match dates flexibly
-            const matchRound = (pId) => cloudRounds.find(r => {
-                if (!r || !r.playerId) return false;
-                const samePlayer = String(r.playerId) === String(pId);
-                const sameDate = r.date === matchDate || r.date === formattedMatchDate || String(r.date).includes(matchDate);
-                return samePlayer && sameDate;
-            });
+            // Search the fresh cloud data instead of the old device memory
+            const p1Round = Object.values(cloudRounds).find(r => String(r.playerId) === String(t.p1.id) && (r.date === matchDate || r.date === formattedMatchDate));
+            const p2Round = Object.values(cloudRounds).find(r => String(r.playerId) === String(t.p2.id) && (r.date === matchDate || r.date === formattedMatchDate));
 
-            const p1Round = matchRound(t.p1.id);
-            const p2Round = matchRound(t.p2.id);
-
-            if (p1Round && p1Inputs.length > 0) {
-                p1Inputs[0].value = p1Round.points || 0;
-                updatedCount++;
-            }
-            if (p2Round && p2Inputs.length > 0) {
-                p2Inputs[0].value = p2Round.points || 0;
-                updatedCount++;
-            }
+            if (p1Round && p1Inputs.length > 0) p1Inputs[0].value = p1Round.points || 0;
+            if (p2Round && p2Inputs.length > 0) p2Inputs[0].value = p2Round.points || 0;
         });
-
-        if (updatedCount > 0) {
-            alert(`Successfully synced ${updatedCount} player scores!`);
-        } else {
-            alert(`No history scores found matching the date: ${matchDate}`);
-        }
-    }).catch(err => {
-        console.error("Firebase sync error:", err);
-        alert("Error connecting to Firebase.");
     });
 }
     function calculateDoublesResults() {
