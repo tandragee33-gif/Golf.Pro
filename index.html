@@ -1480,6 +1480,14 @@ function viewDetail(date, courseId) {
                 </div>
             </div>`).join('')).join('');
 
+// Add this right after the rounds are mapped in renderMatchplay:
+const currentLastRound = t.rounds[t.rounds.length - 1];
+const roundComplete = currentLastRound.every(m => m.win !== null || m.uB === null);
+
+if (roundComplete && currentLastRound.length > 1) {
+    bracketDiv.innerHTML += `<button class="btn-save-comp" style="width:100%; margin-top:15px;" onclick="progressTourney('${type}')">➡️ Advance to Next Round</button>`;
+}
+
         const lastRound = t.rounds[t.rounds.length - 1];
         if (lastRound && lastRound.length === 1 && lastRound[0].win) {
             const champ = lastRound[0].win === 'A' ? lastRound[0].uA.name : lastRound[0].uB.name;
@@ -1511,26 +1519,36 @@ function viewDetail(date, courseId) {
         saveData(); progressTourney(type); renderMatchplay(type);
     }
 
-    function setWin(type, rIdx, mId, win) {
-        const t=(type==='pairs')?pairsT:singlesT;
-        const match = t.rounds[rIdx].find(x=>x.id===mId);
-        if(!match.uB && win === 'B') return;
-        match.win = win;
-        saveData(); progressTourney(type); renderMatchplay(type);
-    }
+function setWin(type, rIdx, mId, win) {
+    const t = (type === 'pairs') ? pairsT : singlesT;
+    const match = t.rounds[rIdx].find(x => x.id === mId);
+    if (!match.uB && win === 'B') return;
+    match.win = win;
+    saveData(); 
+    renderMatchplay(type); // Only redrawn local state, does not advance round
+}
 
-    function progressTourney(type) {
-        const t = (type === 'pairs') ? pairsT : singlesT;
-        let lastRound = t.rounds[t.rounds.length - 1];
-        const isComplete = lastRound.every(m => m.win !== null || m.uB === null);
-        if(isComplete && lastRound.length > 1) {
-            const winners = lastRound.map(m => (!m.uB || m.win === 'A') ? m.uA : m.uB);
-            const nextRound = [];
-            for(let i=0; i<winners.length; i+=2) nextRound.push({ id: 'm' + Date.now() + i, uA: winners[i], uB: winners[i+1] || null, win: null });
-            t.rounds.push(nextRound);
-            saveData(); progressTourney(type);
+function progressTourney(type) {
+    // Only automatically build the next round if specifically called by the user
+    const t = (type === 'pairs') ? pairsT : singlesT;
+    if (!t || !t.rounds) return;
+
+    let lastRound = t.rounds[t.rounds.length - 1];
+    const isComplete = lastRound.every(m => m.win !== null || m.uB === null);
+
+    if (isComplete && lastRound.length > 1) {
+        const winners = lastRound.map(m => (!m.uB || m.win === 'A') ? m.uA : m.uB);
+        const nextRound = [];
+        for (let i = 0; i < winners.length; i += 2) {
+            nextRound.push({ id: 'm' + Date.now() + i, uA: winners[i], uB: winners[i + 1] || null, win: null });
         }
+        t.rounds.push(nextRound);
+        saveData();
+        renderMatchplay(type);
+    } else if (!isComplete) {
+        alert("Please select a winner for all matches in this round first.");
     }
+}
 
 function saveTournamentRecord(type, winner) {
     // Line 1: Get the score from the box
