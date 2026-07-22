@@ -1628,23 +1628,25 @@ function updateScorecardFromHistory() {
     const matchDate = document.getElementById('dbDate').value;
     if (!matchDate || tempTeams.length === 0) return;
 
-    const formattedMatchDate = formatDateDisplay(matchDate);
+    const formattedMatchDate = (typeof formatDateDisplay === 'function') ? formatDateDisplay(matchDate) : matchDate;
 
     // 1. Ask Firebase for the absolute newest cloud data right now
     database.ref('golf_data/rounds').once('value').then((snapshot) => {
         const cloudRounds = snapshot.val() || [];
         
+        // Grab all p1 and p2 input fields on the screen in order
+        const allP1Inputs = document.querySelectorAll('.db-p1');
+        const allP2Inputs = document.querySelectorAll('.db-p2');
+
         // 2. Map those fresh cloud scores directly into your screen inputs
         tempTeams.forEach((t, idx) => {
-            const p1Inputs = document.querySelectorAll(`.db-p1[data-idx="${idx}"]`);
-            const p2Inputs = document.querySelectorAll(`.db-p2[data-idx="${idx}"]`);
-
-            // Search the fresh cloud data instead of the old device memory
+            // Search the fresh cloud data
             const p1Round = Object.values(cloudRounds).find(r => String(r.playerId) === String(t.p1.id) && (r.date === matchDate || r.date === formattedMatchDate));
             const p2Round = Object.values(cloudRounds).find(r => String(r.playerId) === String(t.p2.id) && (r.date === matchDate || r.date === formattedMatchDate));
 
-            if (p1Round && p1Inputs.length > 0) p1Inputs[0].value = p1Round.points || 0;
-            if (p2Round && p2Inputs.length > 0) p2Inputs[0].value = p2Round.points || 0;
+            // Assign directly by array position (idx)
+            if (p1Round && allP1Inputs[idx]) allP1Inputs[idx].value = p1Round.points || 0;
+            if (p2Round && allP2Inputs[idx]) allP2Inputs[idx].value = p2Round.points || 0;
         });
     });
 }
