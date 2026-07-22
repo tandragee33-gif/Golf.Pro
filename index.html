@@ -1626,76 +1626,50 @@ function setupDoublesTeams() {
 
 function updateScorecardFromHistory() {
     const matchDate = document.getElementById('dbDate').value;
-    
-    if (!matchDate) {
-        alert("STOPPED: The Match Date box is empty.");
-        return;
+    if (!matchDate || !tempTeams || tempTeams.length === 0) return;
+
+    // Convert input date into clean components (e.g. 22/07/2026 or 2026-07-22)
+    const cleanDate = matchDate.trim();
+    let altDate = cleanDate;
+
+    if (cleanDate.includes('/')) {
+        const parts = cleanDate.split('/');
+        if (parts.length === 3) altDate = `${parts[2]}-${parts[1]}-${parts[0]}`;
+    } else if (cleanDate.includes('-')) {
+        const parts = cleanDate.split('-');
+        if (parts.length === 3) altDate = `${parts[2]}/${parts[1]}/${parts[0]}`;
     }
 
-    if (!tempTeams || tempTeams.length === 0) {
-        alert("STOPPED: No teams are selected/generated yet (tempTeams is empty).");
-        return;
-    }
-
-    // Generate both possible date versions (e.g., "22/07/2026" AND "2026-07-22")
-    let displayDate = matchDate;
-    let isoDate = matchDate;
-
-    if (matchDate.includes('/')) {
-        // Converting DD/MM/YYYY -> YYYY-MM-DD
-        const parts = matchDate.split('/');
-        if (parts.length === 3) {
-            isoDate = `${parts[2]}-${parts[1]}-${parts[0]}`;
-        }
-    } else if (matchDate.includes('-')) {
-        // Converting YYYY-MM-DD -> DD/MM/YYYY
-        const parts = matchDate.split('-');
-        if (parts.length === 3) {
-            displayDate = `${parts[2]}/${parts[1]}/${parts[0]}`;
-        }
-    }
-
-    // Fetch cloud data
+    // Fetch cloud data quietly
     database.ref('golf_data/rounds').once('value').then((snapshot) => {
         const cloudRounds = snapshot.val() || [];
         
         const allP1Inputs = document.querySelectorAll('.db-p1');
         const allP2Inputs = document.querySelectorAll('.db-p2');
 
-        if (allP1Inputs.length === 0) {
-            alert("STOPPED: Couldn't find any input boxes with the class 'db-p1' on your screen.");
-            return;
-        }
-
-        let matchesFound = 0;
-
-        // Map cloud scores into screen inputs matching team order
         tempTeams.forEach((t, idx) => {
-            const p1Round = Object.values(cloudRounds).find(r => 
-                String(r.playerId) === String(t.p1.id) && 
-                (r.date === matchDate || r.date === displayDate || r.date === isoDate)
-            );
-            
-            const p2Round = Object.values(cloudRounds).find(r => 
-                String(r.playerId) === String(t.p2.id) && 
-                (r.date === matchDate || r.date === displayDate || r.date === isoDate)
-            );
+            // Helper function to safely match dates and player IDs
+            const findScore = (pId) => {
+                return Object.values(cloudRounds).find(r => {
+                    if (!r || r.playerId === undefined || !r.date) return false;
+                    const samePlayer = String(r.playerId).trim() === String(pId).trim();
+                    const sameDate = String(r.date).trim() === cleanDate || String(r.date).trim() === altDate;
+                    return samePlayer && sameDate;
+                });
+            };
+
+            const p1Round = t.p1 ? findScore(t.p1.id) : null;
+            const p2Round = t.p2 ? findScore(t.p2.id) : null;
 
             if (p1Round && allP1Inputs[idx]) {
-                allP1Inputs[idx].value = p1Round.points || 0;
-                matchesFound++;
+                allP1Inputs[idx].value = p1Round.points !== undefined ? p1Round.points : 0;
             }
             if (p2Round && allP2Inputs[idx]) {
-                allP2Inputs[idx].value = p2Round.points || 0;
-                matchesFound++;
+                allP2Inputs[idx].value = p2Round.points !== undefined ? p2Round.points : 0;
             }
         });
-
-        if (matchesFound === 0) {
-            alert("FINISHED: Database checked, but no Firebase records matched Date: " + matchDate + " for these specific players.");
-        } else {
-            alert("SUCCESS: " + matchesFound + " scores synced successfully!");
-        }
+    }).catch(() => {
+        // Silent failure - no popups will interrupt your app
     });
 }
     function calculateDoublesResults() {
