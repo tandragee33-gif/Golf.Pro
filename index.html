@@ -1516,7 +1516,7 @@ if (roundComplete && currentLastRound.length > 1) {
         for(let i=0; i<units.length; i+=2) matches.push({id:'m'+i, uA:units[i], uB:units[i+1]||null, win:null});
         const obj = { rounds: [matches] }; 
         if(type==='pairs') pairsT=obj; else singlesT=obj; 
-        saveData(); progressTourney(type); renderMatchplay(type);
+        saveData(); renderMatchplay(type);
     }
 
 function setWin(type, rIdx, mId, win) {
@@ -1529,24 +1529,39 @@ function setWin(type, rIdx, mId, win) {
 }
 
 function progressTourney(type) {
-    // Only automatically build the next round if specifically called by the user
     const t = (type === 'pairs') ? pairsT : singlesT;
-    if (!t || !t.rounds) return;
+    if (!t || !t.rounds || t.rounds.length === 0) return;
 
     let lastRound = t.rounds[t.rounds.length - 1];
-    const isComplete = lastRound.every(m => m.win !== null || m.uB === null);
+    
+    // 1. Check if ALL matches have an actual winner selected (or are a BYE)
+    const isComplete = lastRound.every(m => m.win !== null || !m.uB);
 
-    if (isComplete && lastRound.length > 1) {
-        const winners = lastRound.map(m => (!m.uB || m.win === 'A') ? m.uA : m.uB);
+    if (!isComplete) {
+        alert("Please pick a winner for all matches in this round first!");
+        return;
+    }
+
+    // 2. Only build next round if there is more than 1 match remaining
+    if (lastRound.length > 1) {
+        const winners = lastRound.map(m => {
+            if (!m.uB) return m.uA; // Auto-advance BYE
+            return m.win === 'A' ? m.uA : m.uB;
+        });
+
         const nextRound = [];
         for (let i = 0; i < winners.length; i += 2) {
-            nextRound.push({ id: 'm' + Date.now() + i, uA: winners[i], uB: winners[i + 1] || null, win: null });
+            nextRound.push({ 
+                id: 'm' + Date.now() + i, 
+                uA: winners[i], 
+                uB: winners[i + 1] || null, 
+                win: null 
+            });
         }
+
         t.rounds.push(nextRound);
         saveData();
         renderMatchplay(type);
-    } else if (!isComplete) {
-        alert("Please select a winner for all matches in this round first.");
     }
 }
 
