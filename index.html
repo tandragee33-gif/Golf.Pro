@@ -1627,19 +1627,33 @@ function setupDoublesTeams() {
 function updateScorecardFromHistory() {
     const matchDate = document.getElementById('dbDate').value;
     
-    // FACT CHECK 1: Is there a date?
     if (!matchDate) {
         alert("STOPPED: The Match Date box is empty.");
         return;
     }
 
-    // FACT CHECK 2: Are there teams in memory?
     if (!tempTeams || tempTeams.length === 0) {
         alert("STOPPED: No teams are selected/generated yet (tempTeams is empty).");
         return;
     }
 
-    const formattedMatchDate = (typeof formatDateDisplay === 'function') ? formatDateDisplay(matchDate) : matchDate;
+    // Generate both possible date versions (e.g., "22/07/2026" AND "2026-07-22")
+    let displayDate = matchDate;
+    let isoDate = matchDate;
+
+    if (matchDate.includes('/')) {
+        // Converting DD/MM/YYYY -> YYYY-MM-DD
+        const parts = matchDate.split('/');
+        if (parts.length === 3) {
+            isoDate = `${parts[2]}-${parts[1]}-${parts[0]}`;
+        }
+    } else if (matchDate.includes('-')) {
+        // Converting YYYY-MM-DD -> DD/MM/YYYY
+        const parts = matchDate.split('-');
+        if (parts.length === 3) {
+            displayDate = `${parts[2]}/${parts[1]}/${parts[0]}`;
+        }
+    }
 
     // Fetch cloud data
     database.ref('golf_data/rounds').once('value').then((snapshot) => {
@@ -1648,9 +1662,8 @@ function updateScorecardFromHistory() {
         const allP1Inputs = document.querySelectorAll('.db-p1');
         const allP2Inputs = document.querySelectorAll('.db-p2');
 
-        // FACT CHECK 3: Are the input boxes actually on the screen?
         if (allP1Inputs.length === 0) {
-            alert("STOPPED: Code reached Firebase, but couldn't find any input boxes with the class 'db-p1' on your screen.");
+            alert("STOPPED: Couldn't find any input boxes with the class 'db-p1' on your screen.");
             return;
         }
 
@@ -1660,12 +1673,12 @@ function updateScorecardFromHistory() {
         tempTeams.forEach((t, idx) => {
             const p1Round = Object.values(cloudRounds).find(r => 
                 String(r.playerId) === String(t.p1.id) && 
-                (r.date === matchDate || r.date === formattedMatchDate)
+                (r.date === matchDate || r.date === displayDate || r.date === isoDate)
             );
             
             const p2Round = Object.values(cloudRounds).find(r => 
                 String(r.playerId) === String(t.p2.id) && 
-                (r.date === matchDate || r.date === formattedMatchDate)
+                (r.date === matchDate || r.date === displayDate || r.date === isoDate)
             );
 
             if (p1Round && allP1Inputs[idx]) {
@@ -1678,7 +1691,6 @@ function updateScorecardFromHistory() {
             }
         });
 
-        // FACT CHECK 4: Did the dates and player IDs actually match Firebase?
         if (matchesFound === 0) {
             alert("FINISHED: Database checked, but no Firebase records matched Date: " + matchDate + " for these specific players.");
         } else {
