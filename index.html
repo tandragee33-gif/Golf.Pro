@@ -1625,41 +1625,36 @@ function setupDoublesTeams() {
 }
 
 function updateScorecardFromHistory() {
-    console.log("1. Button clicked!");
+    const matchDate = document.getElementById('dbDate').value;
+    if (!matchDate || tempTeams.length === 0) return;
 
-    const dbDateEl = document.getElementById('dbDate');
-    console.log("2. dbDate element found:", dbDateEl);
+    const formattedMatchDate = (typeof formatDateDisplay === 'function') ? formatDateDisplay(matchDate) : matchDate;
 
-    const matchDate = dbDateEl ? dbDateEl.value : null;
-    console.log("3. matchDate value:", matchDate);
-
-    console.log("4. tempTeams in memory:", tempTeams);
-
-    if (!matchDate || !tempTeams || tempTeams.length === 0) {
-        console.log("❌ STOPPED HERE: Either matchDate is empty or tempTeams is empty!");
-        return;
-    }
-
-    console.log("5. Reached Firebase query...");
-
+    // 1. Ask Firebase for the cloud data
     database.ref('golf_data/rounds').once('value').then((snapshot) => {
         const cloudRounds = snapshot.val() || [];
-        console.log("6. Firebase returned rounds:", cloudRounds);
-
+        
+        // Grab all input fields on the screen in order
         const allP1Inputs = document.querySelectorAll('.db-p1');
         const allP2Inputs = document.querySelectorAll('.db-p2');
-        console.log("7. Found inputs on screen:", allP1Inputs.length, allP2Inputs.length);
 
+        // 2. Map cloud scores into screen inputs matching team order
         tempTeams.forEach((t, idx) => {
-            const p1Round = Object.values(cloudRounds).find(r => String(r.playerId) === String(t.p1.id) && r.date === matchDate);
-            const p2Round = Object.values(cloudRounds).find(r => String(r.playerId) === String(t.p2.id) && r.date === matchDate);
+            const p1Round = Object.values(cloudRounds).find(r => 
+                String(r.playerId) === String(t.p1.id) && 
+                (r.date === matchDate || r.date === formattedMatchDate)
+            );
+            
+            const p2Round = Object.values(cloudRounds).find(r => 
+                String(r.playerId) === String(t.p2.id) && 
+                (r.date === matchDate || r.date === formattedMatchDate)
+            );
 
-            console.log(`Team ${idx + 1} (${t.p1.name} / ${t.p2.name}):`, { p1Round, p2Round });
-
+            // Directly fill the input matching this team's position
             if (p1Round && allP1Inputs[idx]) allP1Inputs[idx].value = p1Round.points || 0;
             if (p2Round && allP2Inputs[idx]) allP2Inputs[idx].value = p2Round.points || 0;
         });
-    }).catch(err => console.error("Firebase Error:", err));
+    });
 }
     function calculateDoublesResults() {
         const results = tempTeams.map((t, idx) => {
