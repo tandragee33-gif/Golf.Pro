@@ -1626,19 +1626,37 @@ function setupDoublesTeams() {
 
 function updateScorecardFromHistory() {
     const matchDate = document.getElementById('dbDate').value;
-    if (!matchDate || tempTeams.length === 0) return;
+    
+    // FACT CHECK 1: Is there a date?
+    if (!matchDate) {
+        alert("STOPPED: The Match Date box is empty.");
+        return;
+    }
+
+    // FACT CHECK 2: Are there teams in memory?
+    if (!tempTeams || tempTeams.length === 0) {
+        alert("STOPPED: No teams are selected/generated yet (tempTeams is empty).");
+        return;
+    }
 
     const formattedMatchDate = (typeof formatDateDisplay === 'function') ? formatDateDisplay(matchDate) : matchDate;
 
-    // 1. Ask Firebase for the cloud data
+    // Fetch cloud data
     database.ref('golf_data/rounds').once('value').then((snapshot) => {
         const cloudRounds = snapshot.val() || [];
         
-        // Grab all input fields on the screen in order
         const allP1Inputs = document.querySelectorAll('.db-p1');
         const allP2Inputs = document.querySelectorAll('.db-p2');
 
-        // 2. Map cloud scores into screen inputs matching team order
+        // FACT CHECK 3: Are the input boxes actually on the screen?
+        if (allP1Inputs.length === 0) {
+            alert("STOPPED: Code reached Firebase, but couldn't find any input boxes with the class 'db-p1' on your screen.");
+            return;
+        }
+
+        let matchesFound = 0;
+
+        // Map cloud scores into screen inputs matching team order
         tempTeams.forEach((t, idx) => {
             const p1Round = Object.values(cloudRounds).find(r => 
                 String(r.playerId) === String(t.p1.id) && 
@@ -1650,10 +1668,22 @@ function updateScorecardFromHistory() {
                 (r.date === matchDate || r.date === formattedMatchDate)
             );
 
-            // Directly fill the input matching this team's position
-            if (p1Round && allP1Inputs[idx]) allP1Inputs[idx].value = p1Round.points || 0;
-            if (p2Round && allP2Inputs[idx]) allP2Inputs[idx].value = p2Round.points || 0;
+            if (p1Round && allP1Inputs[idx]) {
+                allP1Inputs[idx].value = p1Round.points || 0;
+                matchesFound++;
+            }
+            if (p2Round && allP2Inputs[idx]) {
+                allP2Inputs[idx].value = p2Round.points || 0;
+                matchesFound++;
+            }
         });
+
+        // FACT CHECK 4: Did the dates and player IDs actually match Firebase?
+        if (matchesFound === 0) {
+            alert("FINISHED: Database checked, but no Firebase records matched Date: " + matchDate + " for these specific players.");
+        } else {
+            alert("SUCCESS: " + matchesFound + " scores synced successfully!");
+        }
     });
 }
     function calculateDoublesResults() {
