@@ -1821,20 +1821,10 @@ function saveRound() {
         if (typeof colorLive === "function") colorLive(input);
     });
 
-    // 5. Automatic lockdown back to player mode view
-    const modeSelect = document.getElementById('app-mode-select');
-    if (modeSelect) {
-        modeSelect.value = "player";
-        if (typeof toggleAppMode === 'function') {
-           toggleAppMode();
-        }
-    }
-
-    // 6. Alert user round is synced
+    // 5. Alert user round is synced
     alert("Round Saved to Cloud!");
     showTab('tab-stats');
 }
-
     function renderStats() {
         const filterVal = document.getElementById('statsFilterDate').value; 
         let data = rounds.sort((a,b) => new Date(b.date) - new Date(a.date));
