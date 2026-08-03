@@ -403,10 +403,9 @@
 </select>
 
 <button class="btn"
-        id="loadTeeBtn"
-        style="display:none;"
-        onclick="loadSelectedTee()">
-    Load Selected Tee
+       id="loadTeeBtn"
+       style="display:none;">
+   Load Selected Tee
 </button>
 
 </div>
@@ -930,11 +929,7 @@ option.textContent =
     }
 }
 function loadSelectedTee() {
-
-    const teeIndex =
-        document.getElementById(
-            'teeSelector'
-        ).value;
+    const teeIndex = document.getElementById('teeSelector').value;
 
     if (teeIndex === '') {
         alert('Please select a tee box');
@@ -943,61 +938,45 @@ function loadSelectedTee() {
 
     let tees = [];
 
-    if (
-        selectedCourseData.tees &&
-        selectedCourseData.tees.male
-    ) {
-        tees = tees.concat(
-            selectedCourseData.tees.male
-        );
+    if (selectedCourseData.tees && selectedCourseData.tees.male) {
+        tees = tees.concat(selectedCourseData.tees.male);
     }
 
-    if (
-        selectedCourseData.tees &&
-        selectedCourseData.tees.female
-    ) {
-        tees = tees.concat(
-            selectedCourseData.tees.female
-        );
+    if (selectedCourseData.tees && selectedCourseData.tees.female) {
+        tees = tees.concat(selectedCourseData.tees.female);
     }
 
-    const selectedTee =
-        tees[teeIndex];
+    // Direct Fix: Fallback to searching by ID if teeIndex isn't a valid array index
+    const selectedTee = tees[teeIndex] || tees.find(t => t.id === teeIndex) || tees[0];
+
+    if (!selectedTee) {
+        alert('Selected tee data could not be found.');
+        return;
+    }
 
     // COURSE NAME
-    document.getElementById(
-        'cName'
-    ).value =
-        selectedCourseData.club_name +
+    document.getElementById('cName').value =
+        (selectedCourseData.club_name || selectedCourseData.course_name || '') +
         ' - ' +
-        selectedTee.tee_name;
+        (selectedTee.tee_name || '');
 
     // LOAD PARS
-    document.querySelectorAll(
-        '.setup-pars-val'
-    ).forEach((input, i) => {
-
-        input.value =
-            selectedTee.holes?.[i]?.par || '';
+    document.querySelectorAll('.setup-pars-val').forEach((input, i) => {
+        input.value = selectedTee.holes?.[i]?.par || '';
     });
 
     // LOAD STROKE INDEX
-    document.querySelectorAll(
-        '.setup-si-val'
-    ).forEach((input, i) => {
-
-        input.value =
-            selectedTee.holes?.[i]?.hcp || '';
+    document.querySelectorAll('.setup-si-val').forEach((input, i) => {
+        input.value = selectedTee.holes?.[i]?.hcp || '';
     });
 
-// SAVE YARDAGES
-window.tempYards =
-    selectedTee.holes?.map(
-        h => h.yardage || 0
-    ) || [];
+    // SAVE YARDAGES
+    window.tempYards = selectedTee.holes?.map(h => h.yardage || 0) || [];
 
     console.log(selectedTee);
-alert(JSON.stringify(selectedTee.holes[0]));
+    if (selectedTee.holes && selectedTee.holes[0]) {
+        alert(JSON.stringify(selectedTee.holes[0]));
+    }
 }
 
 // --- UPGRADED SAVING MECHANISM ---
@@ -2471,6 +2450,7 @@ if (typeof database !== "undefined") {
         }
     });
 }
+document.getElementById("loadTeeBtn").addEventListener("click", loadSelectedTee);
 </script>
 </body>
 </html>
