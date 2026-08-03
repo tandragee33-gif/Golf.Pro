@@ -403,9 +403,10 @@
 </select>
 
 <button class="btn"
-       id="loadTeeBtn"
-       style="display:none;">
-   Load Selected Tee
+        id="loadTeeBtn"
+        style="display:none;"
+        onclick="loadSelectedTee()">
+    Load Selected Tee
 </button>
 
 </div>
@@ -2470,7 +2471,6 @@ if (typeof database !== "undefined") {
         }
     });
 }
-document.getElementById("loadTeeBtn").addEventListener("click", loadSelectedTee);
 </script>
 </body>
 </html>
