@@ -1464,24 +1464,8 @@ const currentLastRound = t.rounds[t.rounds.length - 1];
 const roundComplete = currentLastRound.every(m => m.win !== null || m.uB === null);
 
 if (roundComplete && currentLastRound.length > 1) {
-    // Check all common ways a winner might be stored on the match object
-    const allWinnersSelected = currentLastRound.every(match => {
-        return (
-            match.winner !== undefined && 
-            match.winner !== null && 
-            match.winner !== ''
-        ) || (
-            match.winnerId !== undefined && 
-            match.winnerId !== null && 
-            match.winnerId !== ''
-        ) || (
-            match.w !== undefined && 
-            match.w !== null && 
-            match.w !== ''
-        );
-    });
-
-console.log("Current Round Matches:", currentLastRound);
+    // Check if EVERY match in the current round has a 'win' property set
+    const allWinnersSelected = currentLastRound.every(match => match.win && match.win !== '');
 
     if (allWinnersSelected) {
         bracketDiv.innerHTML += `
