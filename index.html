@@ -1464,7 +1464,26 @@ const currentLastRound = t.rounds[t.rounds.length - 1];
 const roundComplete = currentLastRound.every(m => m.win !== null || m.uB === null);
 
 if (roundComplete && currentLastRound.length > 1) {
-    bracketDiv.innerHTML += `<button class="btn-save-comp" style="width:100%; margin-top:15px;" onclick="progressTourney('${type}')">➡️ Advance to Next Round</button>`;
+    // Check if EVERY match in the current round has a winner selected
+    const allWinnersSelected = currentLastRound.every(match => match.winner);
+
+    if (allWinnersSelected) {
+        // All winners are selected: Show normal advance button
+        bracketDiv.innerHTML += `
+            <button class="btn-save-comp" 
+                    style="width:100%; margin-top:15px;" 
+                    onclick="progressTourney('${type}')">
+                ➡️ Advance to Next Round
+            </button>`;
+    } else {
+        // Missing winners: Show a disabled/warning button with an alert
+        bracketDiv.innerHTML += `
+            <button class="btn-save-comp" 
+                    style="width:100%; margin-top:15px; opacity: 0.6; cursor: not-allowed; background-color: #e74c3c;" 
+                    onclick="alert('⚠️ Cannot advance yet! Please select a winner for all match-ups in this round first.')">
+                ⚠️ Advance to Next Round (Winners Pending)
+            </button>`;
+    }
 }
 
         const lastRound = t.rounds[t.rounds.length - 1];
